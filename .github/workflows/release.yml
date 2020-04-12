@@ -37,54 +37,22 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: true
-          prerelease: false
-      - name: Save upload_url
-        run: |
-          echo -n '${{ steps.create_release.outputs.upload_url }}' > upload_url.txt
-      - name: Upload Artifact with upload_url
-        uses: actions/upload-artifact@v1
-        with:
-          name: upload_url
-          path: upload_url.txt
-  assets:
-    name: Upload Release Assets
-    runs-on: ubuntu-latest
-    needs: release
-    strategy:
-      matrix:
-        os: [linux, darwin, windows]
-        arch: [amd64, 386]
-    steps:
-      - name: Download upload_url
-        uses: actions/download-artifact@v1
-        with:
-          name: upload_url
-      - name: Read upload_url
-        run: |
-          echo ::set-env name=UPLOAD_URL::$(cat upload_url/upload_url.txt)
       - name: Download Artifacts
         uses: actions/download-artifact@v1
         with:
           name: terraform-backend-git
-      - name: Add Windows Exe File Extension
-        if: matrix.os == 'windows'
+      - name: List Artifacts
         run: |
-          echo ::set-env name=FILE_EXTENSION::.exe
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+          echo ::set-env name=ARTIFACTS::$(echo terraform-backend-git/*)
+      - name: Release
+        uses: docker://antonyurchenko/git-release:v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRAFT_RELEASE: "true"
+          PRE_RELEASE: "false"
+          CHANGELOG_FILE: "CHANGELOG.md"
+          ALLOW_EMPTY_CHANGELOG: "false"
+          ALLOW_TAG_PREFIX: "true"
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: terraform-backend-git/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
-          asset_name: terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
-          asset_content_type: application/octet-stream
+          args: |
+              ${{ env.ARTIFACTS }}
