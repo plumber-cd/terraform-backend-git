@@ -19,7 +19,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
 
 ### Usage
 
-First, download a backend from (release)[https://github.com/plumber-cd/terraform-backend-git/releases] page.
+First, download a backend from [release](https://github.com/plumber-cd/terraform-backend-git/releases) page.
 
 Alternatively, you can build it yourself:
 
