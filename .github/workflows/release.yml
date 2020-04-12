@@ -7,7 +7,7 @@ name: Create Release
 
 jobs:
   build:
-    name: Build Linux amd64
+    name: Build
     runs-on: ubuntu-16.04
     strategy:
       matrix:
@@ -24,12 +24,12 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -o build/terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
+        run: go build -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: terraform-backend-git
-          path: build/terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
+          path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
     needs: release
     strategy:
       matrix:
-        os: [linux, darwin, windows]
+        os: [linux, darwin]
         arch: [amd64, 386]
     steps:
       - name: Download upload_url
@@ -81,6 +81,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: terraform-backend-git/terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
-          asset_name: terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
+          asset_path: terraform-backend-git/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
+          asset_name: terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
           asset_content_type: application/octet-stream
