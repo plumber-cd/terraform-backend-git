@@ -8,7 +8,6 @@ name: Produce Release
 jobs:
   release:
     name: Create Release
-    id: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
