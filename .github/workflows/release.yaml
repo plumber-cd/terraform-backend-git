@@ -1,0 +1,45 @@
+on:
+  push:
+    tags:
+    - 'v*'
+
+name: Produce Release
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+  linux:
+    name: Upload Linux Release Assets
+    runs-on: ubuntu-16.04
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.14'
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Build Code
+        run: go build
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ jobs.release.steps.create_release.outputs.upload_url }}
+          asset_path: ./terraform-backend-git
+          asset_name: terraform-backend-git
+          asset_content_type: application/octet-stream
