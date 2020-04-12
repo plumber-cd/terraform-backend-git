@@ -70,7 +70,7 @@ jobs:
           name: upload_url
       - name: Read upload_url
         run: |
-          echo "::set-env name=UPLOAD_URL::$(cat upload_url/upload_url.txt)"
+          echo ::set-env name=UPLOAD_URL::$(cat upload_url/upload_url.txt)
       - name: Download Artifacts
         uses: actions/download-artifact@v1
         with:
