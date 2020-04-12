@@ -6,9 +6,28 @@ on:
 name: Produce Release
 
 jobs:
+  linux_amd64:
+    name: Build Linux amd64
+    runs-on: ubuntu-16.04
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.14'
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Build Code
+        run: go build
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: terraform-backend-git-amd64-${{ github.ref }}
+          path: terraform-backend-git
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    needs:
+      - linux_amd64
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -22,25 +41,16 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-  linux:
-    name: Upload Linux Release Assets
-    runs-on: ubuntu-16.04
-    needs: release
-    steps:
-      - name: Setup Go
-        uses: actions/setup-go@v1
+      - name: Download Linux amd64 Artifact
+        uses: actions/download-artifact@v1
         with:
-          go-version: '1.14'
-      - name: Checkout Code
-        uses: actions/checkout@v2
-      - name: Build Code
-        run: go build
-      - name: Upload Release Asset
+          name: terraform-backend-git-amd64-${{ github.ref }}
+      - name: Upload Linux amd64 Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./terraform-backend-git
-          asset_name: terraform-backend-git
+          asset_path: terraform-backend-git
+          asset_name: terraform-backend-git-amd64
           asset_content_type: application/octet-stream
