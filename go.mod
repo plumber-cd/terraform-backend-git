@@ -9,4 +9,5 @@ require (
 	github.com/hashicorp/terraform v0.12.24
 	github.com/spf13/cobra v1.0.0
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
+	golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa
 )

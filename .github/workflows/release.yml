@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        os: [linux, darwin]
+        os: [linux, darwin, windows]
         arch: [amd64, 386]
     steps:
       - name: Setup Go
@@ -61,7 +61,7 @@ jobs:
     needs: release
     strategy:
       matrix:
-        os: [linux, darwin]
+        os: [linux, darwin, windows]
         arch: [amd64, 386]
     steps:
       - name: Download upload_url
@@ -75,6 +75,10 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: terraform-backend-git
+      - name: Add Windows Exe File Extension
+        if: matrix.os == "windows"
+        run: |
+          echo ::set-env name=FILE_EXTENSION::.exe
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
@@ -82,5 +86,5 @@ jobs:
         with:
           upload_url: ${{ env.UPLOAD_URL }}
           asset_path: terraform-backend-git/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
-          asset_name: terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
+          asset_name: terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
           asset_content_type: application/octet-stream
