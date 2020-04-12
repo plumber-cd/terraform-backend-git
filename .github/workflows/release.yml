@@ -26,6 +26,7 @@ jobs:
   linux:
     name: Upload Linux Release Assets
     runs-on: ubuntu-16.04
+    needs: release
     steps:
       - name: Setup Go
         uses: actions/setup-go@v1
@@ -40,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ jobs.release.steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./terraform-backend-git
           asset_name: terraform-backend-git
           asset_content_type: application/octet-stream
