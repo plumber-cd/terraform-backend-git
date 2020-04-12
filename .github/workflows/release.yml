@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        os: [linux, darwin, windows]
+        os: [linux, darwin]
         arch: [amd64, 386]
     steps:
       - name: Setup Go
