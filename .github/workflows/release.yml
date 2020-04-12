@@ -33,7 +33,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: terraform-backend-git
-          path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
   release:
     name: Draft Release
     runs-on: ubuntu-latest
