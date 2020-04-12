@@ -76,7 +76,7 @@ jobs:
         with:
           name: terraform-backend-git
       - name: Add Windows Exe File Extension
-        if: matrix.os == windows
+        if: matrix.os == 'windows'
         run: |
           echo ::set-env name=FILE_EXTENSION::.exe
       - name: Upload Release Asset
