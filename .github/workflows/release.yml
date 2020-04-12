@@ -3,12 +3,16 @@ on:
     tags:
     - 'v*'
 
-name: Produce Release
+name: Create Release
 
 jobs:
-  linux_amd64:
+  build:
     name: Build Linux amd64
     runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, 386]
     steps:
       - name: Setup Go
         uses: actions/setup-go@v1
@@ -17,17 +21,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Build Code
-        run: go build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: go build -o build/terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
-          name: terraform-backend-git-amd64
-          path: terraform-backend-git
+          name: terraform-backend-git
+          path: build/terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
   release:
-    name: Create Release
+    name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs:
-      - linux_amd64
+    needs: build
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -41,16 +47,38 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-      - name: Download Linux amd64 Artifact
+      - name: Save upload_url
+          run: echo -n ${{ steps.create_release.outputs.upload_url }} > upload_url.txt
+      - name: Upload Artifact with upload_url
+        uses: actions/upload-artifact@v1
+        with:
+          name: upload_url
+          path: upload_url.txt
+  assets:
+    name: Upload Release Assets
+    runs-on: ubuntu-latest
+    needs: release
+    strategy:
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, 386]
+    steps:
+      - name: Download upload_url
         uses: actions/download-artifact@v1
         with:
-          name: terraform-backend-git-amd64
-      - name: Upload Linux amd64 Release Asset
+          name: upload_url
+      - name: Read upload_url
+          run: echo "::set-env name=UPLOAD_URL::$(echo -n upload_url/upload_url.txt)"
+      - name: Download Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: terraform-backend-git
+      - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: terraform-backend-git-amd64/terraform-backend-git
-          asset_name: terraform-backend-git-amd64
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: terraform-backend-git/terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
+          asset_name: terraform-backend-git-${{ matrix.os }}${{ matrix.arch }}
           asset_content_type: application/octet-stream
