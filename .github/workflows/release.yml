@@ -49,7 +49,7 @@ jobs:
           prerelease: false
       - name: Save upload_url
         run: |
-          echo -n ${{ steps.create_release.outputs.upload_url }} > upload_url.txt
+          echo -n '${{ steps.create_release.outputs.upload_url }}' > upload_url.txt
       - name: Upload Artifact with upload_url
         uses: actions/upload-artifact@v1
         with:
@@ -71,9 +71,6 @@ jobs:
       - name: Read upload_url
         run: |
           echo ::set-env name=UPLOAD_URL::$(cat upload_url/upload_url.txt)
-      - name: Echo upload_url
-        run: |
-          echo -n "q${{ env.UPLOAD_URL }}w"
       - name: Download Artifacts
         uses: actions/download-artifact@v1
         with:
