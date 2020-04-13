@@ -32,7 +32,11 @@ Of course, you must be having Terraform installed already.
 You should be good to Go:
 
 ```bash
-terraform-backend-git git --repository git@github.com:my-org/tf-state.git --ref master --state my/state.json terraform init|plan|apply
+terraform-backend-git git \
+  --repository git@github.com:my-org/tf-state.git \
+  --ref master \
+  --state my/state.json \
+    terraform [any tf args] init|plan|apply
 ```
 
 `terraform-backend-git` will act as a wrapper - it will start a backend, generate `*.auto.tf` file in current working directory and fall back to terraform accordingly to your input. After done it will cleanup `*.auto.tf` file it created. The file would contain an HTTP backend configuration pointing to that backend instance, so you shouldn't be having any other backend configurations in your TF code.
