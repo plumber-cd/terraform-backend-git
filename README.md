@@ -27,7 +27,17 @@ Alternatively, you can build it yourself:
 go build github.com/plumber-cd/terraform-backend-git
 ```
 
-Your Terraform backend config should look something like this:
+Of course, you must be having Terraform installed already.
+
+You should be good to Go:
+
+```bash
+terraform-backend-git git --repository git@github.com:my-org/tf-state.git --ref master --state my/state.json terraform init|plan|apply
+```
+
+`terraform-backend-git` will act as a wrapper - it will start a backend, generate `*.auto.tf` file in current working directory and fall back to terraform accordingly to your input. After done it will cleanup `*.auto.tf` file it created. The file would contain an HTTP backend configuration pointing to that backend instance, so you shouldn't be having any other backend configurations in your TF code.
+
+Alternatively, you could have more control over the process if you are using something like `terragrunt`. Bottom line, your Terraform backend config should be looking like this:
 
 ```terraform
 terraform {
@@ -39,23 +49,25 @@ terraform {
 }
 ```
 
-Note that `lock_address` and `unlock_address` should be explicitly defined (both of them), otherwise Terraform would not make any locking or unlocking calls and assume that backend does not support locking and unlocking (how would locking be supported without unlocking?...).
-
-`ref` is optional, by default it will be set to `master`.
-
-`state` is a path to the state file in the repository.
-
-Both HTTP and SSH protocols are supported for Git. For HTTP credentials, please define `GIT_USERNAME` and either `GIT_PASSWORD` or `GIT_TOKEN` environment variables. For SSH, it will try to use `SSH_AUTH_SOCK` environment variable if defined (assuming `ssh-agent` has been started), otherwise it will need a private key file. You can define a path to it via `SSH_PRIVATE_KEY` environment variable, and if not defined it will try to use `~/.ssh/id_rsa`. Unfortunately `go-git` will not mimic Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach.
-
-To enable backend encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` environment variable to set a passphrase. Backend will encrypt and decrypt (using AES256) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption. Traffic between Terraform and this backend stays unencrypted at all times.
-
-Even though this backend could be started standalone and remotely, I would not recommend doing that. Instead, I would suggest to use this backend as a "wrapper" - start it locally on the same host you're about to run Terraform. Like that:
+Then you could use it like this:
 
 ```bash
 terraform-backend-git &
 terraform init|plan|apply
 terraform-backend-git stop
 ```
+
+Note that `lock_address` and `unlock_address` should be explicitly defined (both of them), otherwise Terraform would not make any locking or unlocking calls and assume that backend does not support locking and unlocking (how would locking be supported without unlocking?...).
+
+`--ref` and `ref` is optional, by default it will be set to `master`.
+
+`--state`/`state` is a path to the state file in the repository.
+
+Both HTTP and SSH protocols are supported for Git. For HTTP credentials, please define `GIT_USERNAME` and either `GIT_PASSWORD` or `GIT_TOKEN` environment variables. For SSH, it will try to use `SSH_AUTH_SOCK` environment variable if defined (assuming `ssh-agent` has been started), otherwise it will need a private key file. You can define a path to it via `SSH_PRIVATE_KEY` environment variable, and if not defined it will try to use `~/.ssh/id_rsa`. Unfortunately `go-git` will not mimic Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach.
+
+To enable backend encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` environment variable to set a passphrase. Backend will encrypt and decrypt (using AES256) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption. Traffic between Terraform and this backend stays unencrypted at all times.
+
+This backend could be started standalone and remotely, but I would not recommend doing that.
 
 Besides that Terraform does not perform any encryption before sending the state to HTTP backend, there is also no authentication whatsoever. Running remotely accessible backend like this would not be secure - anyone who can make HTTP calls to it would be able to get, update or delete your state files with no credentials. Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interceptions, but that's the best we can do for now, either until this implementation gets into Terraform as a native Backend implementation, or Backends become a pluggable options, or gRCP backend being implemented or Terraform adds some auth/encryption options to the HTTP backend protocol, or some other miracle.
 

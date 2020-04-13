@@ -18,3 +18,4 @@
 .terraform
 .terraform-backend-git.pid
 terraform-backend-git
+*.auto.tf
