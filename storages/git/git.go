@@ -370,8 +370,7 @@ func (storageSession *storageSession) fileExists(path string) (bool, error) {
 	return !info.IsDir(), nil
 }
 
-// openReader returns a reader for a file in the local working tree.
-// Consumer needs to close it when done.
+// readFile reads a file in the local working tree.
 func (storageSession *storageSession) readFile(path string) ([]byte, error) {
 	var buf []byte
 
@@ -384,7 +383,7 @@ func (storageSession *storageSession) readFile(path string) ([]byte, error) {
 	return ioutil.ReadAll(file)
 }
 
-// writeFile copy from this reader to the file in the local working tree.
+// writeFile write this buf to the file in the local working tree.
 // Either new file will be created or existing one gets overwritten.
 func (storageSession *storageSession) writeFile(path string, buf []byte) error {
 	file, err := storageSession.fs.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)

@@ -231,7 +231,6 @@ func (storageClient *StorageClient) ForceUnLockWorkaroundMessage(p types.Request
 
 // GetState will checkout into Ref, pull the latest from remote, and try to read the state file from there.
 // Will return ErrStateDidNotExisted if the state file did not existed.
-// Returns the reader - consumer needs to take care and close it.
 func (storageClient *StorageClient) GetState(p types.RequestMetadataParams) ([]byte, error) {
 	var state []byte
 

@@ -112,7 +112,7 @@ func UnLockState(metadata *types.RequestMetadata, storageClient types.StorageCli
 	return nil
 }
 
-// GetState attempt to read the state and return it's reader.
+// GetState attempt to read the state from storage.
 // Clinet implementations must return NoErrStateDidNotExisted if the state did not existed.
 func GetState(metadata *types.RequestMetadata, storageClient types.StorageClient) ([]byte, error) {
 	state, err := storageClient.GetState(metadata.Params)
