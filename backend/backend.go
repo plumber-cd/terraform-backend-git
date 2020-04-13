@@ -63,7 +63,7 @@ func lockedByMe(metadata *types.RequestMetadata, storageClient types.StorageClie
 // LockState will lock the state as requested.
 // Locking must be atomic operation so leave all checks for the client.
 // Client implementations must return ErrLockingConflict if it was already locked by someone else.
-func LockState(metadata *types.RequestMetadata, storageClient types.StorageClient, body io.Reader) error {
+func LockState(metadata *types.RequestMetadata, storageClient types.StorageClient, body []byte) error {
 	if err := storageClient.LockState(metadata.Params, body); err != nil {
 		// If it was a conflict, using lockedByMe here will return an ErrLocked since lock ID was missing in the request
 		if err == types.ErrLockingConflict {
@@ -78,7 +78,7 @@ func LockState(metadata *types.RequestMetadata, storageClient types.StorageClien
 }
 
 // UnLockState will unlock the state as requested.
-func UnLockState(metadata *types.RequestMetadata, storageClient types.StorageClient, body io.Reader) error {
+func UnLockState(metadata *types.RequestMetadata, storageClient types.StorageClient, body []byte) error {
 	// Assuming the proper fix for the broken force-unlock in HTTP TF backend is to set HTTP request parameter ID,
 	// and it's presense will indicate that force-unlock has been used.
 	force := metadata.ID != ""
@@ -86,7 +86,7 @@ func UnLockState(metadata *types.RequestMetadata, storageClient types.StorageCli
 	// If it wasn't force-unlock, there will be a request body with the lock metadata that originally locked this state
 	if !force {
 		var lock types.LockInfo
-		if err := json.NewDecoder(body).Decode(&lock); err != nil {
+		if err := json.Unmarshal(body, &lock); err != nil {
 			if err == io.EOF {
 				log.Println(`WARNING: force-unlock is currently broken.
 	Reason: https://github.com/hashicorp/terraform/blob/master/backend/remote-state/http/client.go is broken.
@@ -114,23 +114,33 @@ func UnLockState(metadata *types.RequestMetadata, storageClient types.StorageCli
 
 // GetState attempt to read the state and return it's reader.
 // Clinet implementations must return NoErrStateDidNotExisted if the state did not existed.
-func GetState(metadata *types.RequestMetadata, storageClient types.StorageClient) (io.ReadCloser, error) {
-	stateReader, err := storageClient.GetState(metadata.Params)
+func GetState(metadata *types.RequestMetadata, storageClient types.StorageClient) ([]byte, error) {
+	state, err := storageClient.GetState(metadata.Params)
 	if err != nil {
 		return nil, err
 	}
 
-	return stateReader, nil
+	stateDecrypted, err := decryptIfEnabled(state)
+	if err != nil {
+		return nil, err
+	}
+
+	return stateDecrypted, nil
 }
 
 // UpdateState create or update existing state.
 // This is a write operation, so it's checking if the state was previously locked by a requestor.
-func UpdateState(metadata *types.RequestMetadata, storageClient types.StorageClient, body io.Reader) error {
+func UpdateState(metadata *types.RequestMetadata, storageClient types.StorageClient, body []byte) error {
 	if err := lockedByMe(metadata, storageClient); err != nil {
 		return err
 	}
 
-	if err := storageClient.UpdateState(metadata.Params, body); err != nil {
+	stateMaybeEncrypted, err := encryptIfEnabled(body)
+	if err != nil {
+		return err
+	}
+
+	if err := storageClient.UpdateState(metadata.Params, stateMaybeEncrypted); err != nil {
 		return err
 	}
 
