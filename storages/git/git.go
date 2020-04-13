@@ -1,6 +1,7 @@
 package git
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -369,27 +370,29 @@ func (storageSession *storageSession) fileExists(path string) (bool, error) {
 	return !info.IsDir(), nil
 }
 
-// openReader returns a reader for a file in the local working tree.
-// Consumer needs to close it when done.
-func (storageSession *storageSession) openReader(path string) (io.ReadCloser, error) {
+// readFile reads a file in the local working tree.
+func (storageSession *storageSession) readFile(path string) ([]byte, error) {
+	var buf []byte
+
 	file, err := storageSession.fs.Open(path)
 	if err != nil {
-		return nil, err
+		return buf, err
 	}
+	defer file.Close()
 
-	return file, nil
+	return ioutil.ReadAll(file)
 }
 
-// writeFile copy from this reader to the file in the local working tree.
+// writeFile write this buf to the file in the local working tree.
 // Either new file will be created or existing one gets overwritten.
-func (storageSession *storageSession) writeFile(path string, r io.Reader) error {
+func (storageSession *storageSession) writeFile(path string, buf []byte) error {
 	file, err := storageSession.fs.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	if _, err := io.Copy(file, r); err != nil {
+	if _, err := io.Copy(file, bytes.NewReader(buf)); err != nil {
 		return err
 	}
 

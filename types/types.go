@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/hashicorp/terraform/states/statemgr"
@@ -60,7 +59,7 @@ type StorageClient interface {
 	// Even though for the rest of requests checking the lock is a responsibility of backend (via ReadLock function),
 	// the LockState should check if no one else has locked this state and lock it in the atomic way.
 	// ErrLockingConflict will be returned if someone else got the lock.
-	LockState(RequestMetadataParams, io.Reader) error
+	LockState(RequestMetadataParams, []byte) error
 
 	// ReadStateLock current lock if it exists. Return ErrLockMissing if no lock was found.
 	ReadStateLock(RequestMetadataParams) ([]byte, error)
@@ -72,10 +71,10 @@ type StorageClient interface {
 	ForceUnLockWorkaroundMessage(RequestMetadataParams) string
 
 	// Read state file from storage
-	GetState(RequestMetadataParams) (io.ReadCloser, error)
+	GetState(RequestMetadataParams) ([]byte, error)
 
 	// Update state in the storage
-	UpdateState(RequestMetadataParams, io.Reader) error
+	UpdateState(RequestMetadataParams, []byte) error
 
 	// Delete state from the storage
 	DeleteState(RequestMetadataParams) error

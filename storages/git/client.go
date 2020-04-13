@@ -3,8 +3,6 @@ package git
 import (
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -120,7 +118,7 @@ func (storageClient *StorageClient) Disconnect(p types.RequestMetadataParams) {
 // In other words, we are trying to keep the local working tree fast-forwardable at all times.
 //
 // And remember - git repository hosting the state is a "backend" storage and it's not meant to be used by people.
-func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, lock io.Reader) error {
+func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, lock []byte) error {
 	params := p.(*RequestMetadataParams)
 
 	storageSession := storageClient.sessions[params.Repository]
@@ -202,21 +200,12 @@ func (storageClient *StorageClient) ReadStateLock(p types.RequestMetadataParams)
 		return nil, err
 	}
 
-	lock, err := storageSession.openReader(getLockPath(params))
+	lock, err := storageSession.readFile(getLockPath(params))
 	if err != nil {
 		return nil, err
 	}
 
-	lockBody, err := ioutil.ReadAll(lock)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := lock.Close(); err != nil {
-		return nil, err
-	}
-
-	return lockBody, nil
+	return lock, nil
 }
 
 // UnLockState for Git storage type, unlocking is a simple branch deleting remotely
@@ -242,26 +231,27 @@ func (storageClient *StorageClient) ForceUnLockWorkaroundMessage(p types.Request
 
 // GetState will checkout into Ref, pull the latest from remote, and try to read the state file from there.
 // Will return ErrStateDidNotExisted if the state file did not existed.
-// Returns the reader - consumer needs to take care and close it.
-func (storageClient *StorageClient) GetState(p types.RequestMetadataParams) (io.ReadCloser, error) {
+func (storageClient *StorageClient) GetState(p types.RequestMetadataParams) ([]byte, error) {
+	var state []byte
+
 	params := p.(*RequestMetadataParams)
 
 	storageSession := storageClient.sessions[params.Repository]
 
 	if err := storageSession.checkout(params.Ref, CheckoutModeDefault); err != nil {
-		return nil, err
+		return state, err
 	}
 
 	if err := storageSession.pull(params.Ref); err != nil {
-		return nil, err
+		return state, err
 	}
 
-	state, err := storageSession.openReader(params.State)
+	state, err := storageSession.readFile(params.State)
 	if err != nil {
 		if err == os.ErrNotExist {
-			return nil, types.ErrStateDidNotExisted
+			return state, types.ErrStateDidNotExisted
 		}
-		return nil, err
+		return state, err
 	}
 
 	return state, nil
@@ -270,7 +260,7 @@ func (storageClient *StorageClient) GetState(p types.RequestMetadataParams) (io.
 // UpdateState write the state to storage.
 // It will checkout the Ref, pull the latest and try to add and commit the state in the request.
 // The file in repository will either be created or overwritten.
-func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, state io.Reader) error {
+func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, state []byte) error {
 	params := p.(*RequestMetadataParams)
 
 	storageSession := storageClient.sessions[params.Repository]

@@ -3,7 +3,7 @@ package server
 
 import (
 	"errors"
-	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -45,7 +45,13 @@ func HandleFunc(response http.ResponseWriter, request *http.Request) {
 	case "LOCK":
 		log.Printf("Locking state in %s", metadata.Params.String())
 
-		if err := backend.LockState(metadata, storageClient, request.Body); err != nil {
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			handler.clientError(err)
+			return
+		}
+
+		if err := backend.LockState(metadata, storageClient, body); err != nil {
 			handler.serverError(err)
 			return
 		}
@@ -54,7 +60,13 @@ func HandleFunc(response http.ResponseWriter, request *http.Request) {
 	case "UNLOCK":
 		log.Printf("Unlocking state in %s", metadata.Params.String())
 
-		if err := backend.UnLockState(metadata, storageClient, request.Body); err != nil {
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			handler.clientError(err)
+			return
+		}
+
+		if err := backend.UnLockState(metadata, storageClient, body); err != nil {
 			handler.serverError(err)
 			return
 		}
@@ -63,7 +75,7 @@ func HandleFunc(response http.ResponseWriter, request *http.Request) {
 	case http.MethodGet:
 		log.Printf("Getting state from %s", metadata.Params.String())
 
-		stateReader, err := backend.GetState(metadata, storageClient)
+		state, err := backend.GetState(metadata, storageClient)
 		if err != nil {
 			handler.serverError(err)
 			return
@@ -71,15 +83,17 @@ func HandleFunc(response http.ResponseWriter, request *http.Request) {
 
 		response.Header().Set("Content-Type", "application/json")
 		response.WriteHeader(http.StatusOK)
-		io.Copy(response, stateReader)
-
-		if err := stateReader.Close(); err != nil {
-			log.Printf("Error closing state reader: %s", err)
-		}
+		response.Write(state)
 	case http.MethodPost:
 		log.Printf("Saving state to %s", metadata.Params.String())
 
-		if err := backend.UpdateState(metadata, storageClient, request.Body); err != nil {
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			handler.clientError(err)
+			return
+		}
+
+		if err := backend.UpdateState(metadata, storageClient, body); err != nil {
 			handler.serverError(err)
 			return
 		}
