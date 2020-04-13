@@ -45,6 +45,9 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: terraform-backend-git
+      - name: Generate SHA256SUMS
+        run: |
+          cd terraform-backend-git && sha256sum * > SHA256SUMS
       - name: List Artifacts
         run: |
           echo ::set-env name=ARTIFACTS::$(echo terraform-backend-git/*)
