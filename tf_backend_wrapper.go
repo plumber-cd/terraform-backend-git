@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // terraformWrapperCmd will pass all arguments to terraform,
@@ -16,10 +17,7 @@ var terraformWrapperCmd = &cobra.Command{
 	SilenceUsage:          true,
 	Args:                  cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		tf, err := cmd.Flags().GetString("tf")
-		if err != nil {
-			return err
-		}
+		tf := viper.GetString("wrapper.tf.bin")
 
 		tfCommand := exec.Command(tf, args...)
 		tfCommand.Stdin = os.Stdin
