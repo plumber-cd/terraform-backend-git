@@ -6,19 +6,19 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/gorilla/handlers"
+	"github.com/mitchellh/go-homedir"
 	"github.com/plumber-cd/terraform-backend-git/backend"
 	"github.com/plumber-cd/terraform-backend-git/server"
 	"github.com/plumber-cd/terraform-backend-git/storages/git"
 	"github.com/plumber-cd/terraform-backend-git/types"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var (
-	address    string
-	accessLogs bool
-)
+var cfgFile string
 
 // rootCmd main command that just starts the server and keeps listening on port until terminated
 var rootCmd = &cobra.Command{
@@ -66,14 +66,46 @@ func startServer() {
 	http.HandleFunc("/", server.HandleFunc)
 
 	var handler http.Handler
-	if accessLogs {
+	if viper.GetBool("accessLogs") {
 		handler = handlers.LoggingHandler(os.Stdout, http.DefaultServeMux)
 	} else {
 		handler = nil
 	}
 
+	address := viper.GetString("address")
 	log.Println("listen on", address)
 	log.Fatal(http.ListenAndServe(address, handler))
+}
+
+func initConfig() {
+	viper.SetConfigType("hcl")
+	viper.SetConfigName("terraform-backend-git")
+
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	} else {
+		home, err := homedir.Dir()
+		if err != nil {
+			log.Fatal(err)
+		}
+		viper.AddConfigPath(home)
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+		viper.AddConfigPath(cwd)
+	}
+
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvPrefix("TF_BACKEND_GIT")
+
+	if err := viper.ReadInConfig(); err == nil {
+		log.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		log.Println(err)
+	}
 }
 
 func main() {
@@ -81,18 +113,32 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("[terraform-backend-git]: ")
 
-	rootCmd.PersistentFlags().StringVarP(&address, "address", "a", "127.0.0.1:6061", "Specify the listen address")
-	rootCmd.PersistentFlags().BoolVarP(&accessLogs, "access-logs", "l", false, "Log HTTP requests to the console")
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is terraform-backend-git.hcl)")
+
+	rootCmd.PersistentFlags().StringP("address", "a", "127.0.0.1:6061", "Specify the listen address")
+	viper.BindPFlag("address", rootCmd.PersistentFlags().Lookup("address"))
+	viper.SetDefault("address", "127.0.0.1:6061")
+	rootCmd.PersistentFlags().BoolP("access-logs", "l", false, "Log HTTP requests to the console")
+	viper.BindPFlag("accessLogs", rootCmd.PersistentFlags().Lookup("access-logs"))
+	viper.SetDefault("accessLogs", false)
 
 	rootCmd.AddCommand(stopCmd)
 
 	gitBackendCmd.PersistentFlags().StringP("repository", "r", "", "Repository to use as storage")
-	gitBackendCmd.MarkPersistentFlagRequired("repository")
+	viper.BindPFlag("git.repository", gitBackendCmd.PersistentFlags().Lookup("repository"))
+
 	gitBackendCmd.PersistentFlags().StringP("ref", "b", "master", "Ref (branch) to use")
+	viper.BindPFlag("git.ref", gitBackendCmd.PersistentFlags().Lookup("ref"))
+	viper.SetDefault("git.ref", "master")
+
 	gitBackendCmd.PersistentFlags().StringP("state", "s", "", "Ref (branch) to use")
-	gitBackendCmd.MarkPersistentFlagRequired("state")
+	viper.BindPFlag("git.state", gitBackendCmd.PersistentFlags().Lookup("state"))
 
 	terraformWrapperCmd.Flags().StringP("tf", "t", "terraform", "Path to terraform binary")
+	viper.BindPFlag("wrapper.tf.bin", terraformWrapperCmd.Flags().Lookup("tf"))
+	viper.SetDefault("wrapper.tf.bin", "terraform")
 
 	// for every backend type CMD add a wrapper CMD behind
 	for _, backendCmd := range backendsCmds {

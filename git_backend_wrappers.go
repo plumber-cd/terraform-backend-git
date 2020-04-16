@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // gitHTTPBackendConfigPath is a path to the backend tf config to generate
@@ -31,13 +32,13 @@ terraform {
 			log.Fatal(err)
 		}
 
-		addr := strings.Split(address, ":")
+		addr := strings.Split(viper.GetString("address"), ":")
 		p := map[string]string{
 			"port": addr[len(addr)-1],
 		}
 
 		for _, flag := range []string{"repository", "ref", "state"} {
-			if p[flag], err = cmd.Flags().GetString(flag); err != nil {
+			if p[flag] = viper.GetString("git." + flag); p[flag] == "" {
 				log.Fatal(err)
 			}
 		}

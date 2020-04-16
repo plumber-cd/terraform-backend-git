@@ -41,6 +41,16 @@ terraform-backend-git git \
 
 `terraform-backend-git` will act as a wrapper - it will start a backend, generate `*.auto.tf` file in current working directory and fall back to terraform accordingly to your input. After done it will cleanup `*.auto.tf` file it created. The file would contain an HTTP backend configuration pointing to that backend instance, so you shouldn't be having any other backend configurations in your TF code.
 
+Alternatively, you could use `terraform-backend-git.hcl` config file and put it in the current working directory:
+
+```hcl
+git.repository = "git@github.com:my-org/tf-state.git"
+git.ref = "master"
+git.state = "my/state.json"
+```
+
+You can specify custom path to `hcl` config file using `--config` arg.
+
 Alternatively, you could have more control over the process if you are using something like `terragrunt`. Bottom line, your Terraform backend config should be looking like this:
 
 ```terraform
