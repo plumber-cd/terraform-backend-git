@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2020-04-15
+
+### Fix
+
+- If host user did not had a display name, commit author was empty
+
 ## [0.0.5] - 2020-04-15
 
 ### Fix
