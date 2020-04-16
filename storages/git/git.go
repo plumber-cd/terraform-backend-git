@@ -312,6 +312,11 @@ func (storageSession *storageSession) commit(msg string) error {
 	if err != nil {
 		return err
 	}
+	
+	userName := user.Name
+	if userName == "" {
+		userName = user.Username
+	}
 
 	host, err := os.Hostname()
 	if err != nil {
@@ -325,7 +330,7 @@ func (storageSession *storageSession) commit(msg string) error {
 
 	commitOptions := git.CommitOptions{
 		Author: &object.Signature{
-			Name:  user.Name,
+			Name:  userName,
 			Email: user.Username + "@" + host,
 			When:  time.Now(),
 		},
