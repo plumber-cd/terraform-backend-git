@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -132,10 +131,7 @@ func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, loc
 		return err
 	}
 
-	lockBranchName, err := getLockBranchName(params)
-	if err != nil {
-		return err
-	}
+	lockBranchName := getLockBranchName(params)
 
 	// Delete any local leftowers from the past
 	if err := storageSession.deleteBranch(lockBranchName, false); err != nil {
@@ -147,10 +143,7 @@ func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, loc
 		return err
 	}
 
-	lockPath, err := getLockPath(params)
-	if err != nil {
-		return err
-	}
+	lockPath := getLockPath(params)
 
 	if err := storageSession.writeFile(lockPath, lock); err != nil {
 		return err
@@ -189,10 +182,7 @@ func (storageClient *StorageClient) ReadStateLock(p types.RequestMetadataParams)
 		return nil, err
 	}
 
-	lockBranchName, err := getLockBranchName(params)
-	if err != nil {
-		return nil, err
-	}
+	lockBranchName := getLockBranchName(params)
 
 	// Delete any local leftowers from the past
 	if err := storageSession.deleteBranch(lockBranchName, false); err != nil {
@@ -210,12 +200,7 @@ func (storageClient *StorageClient) ReadStateLock(p types.RequestMetadataParams)
 		return nil, err
 	}
 
-	lockPath, err := getLockPath(params)
-	if err != nil {
-		return nil, err
-	}
-
-	lock, err := storageSession.readFile(lockPath)
+	lock, err := storageSession.readFile(getLockPath(params))
 	if err != nil {
 		return nil, err
 	}
@@ -229,12 +214,7 @@ func (storageClient *StorageClient) UnLockState(p types.RequestMetadataParams) e
 
 	storageSession := storageClient.sessions[params.Repository]
 
-	lockBranchName, err := getLockBranchName(params)
-	if err != nil {
-		return err
-	}
-
-	if err := storageSession.deleteBranch(lockBranchName, true); err != nil {
+	if err := storageSession.deleteBranch(getLockBranchName(params), true); err != nil {
 		return err
 	}
 
@@ -246,7 +226,7 @@ func (storageClient *StorageClient) ForceUnLockWorkaroundMessage(p types.Request
 	params := p.(*RequestMetadataParams)
 
 	return fmt.Sprintf("As a workaround - please delete the branch %s manually in remote git repository %s.\n",
-		"locks/"+params.State, params.Repository)
+		getLockBranchName(params), params.Repository)
 }
 
 // GetState will checkout into Ref, pull the latest from remote, and try to read the state file from there.
@@ -344,11 +324,11 @@ func (storageClient *StorageClient) DeleteState(p types.RequestMetadataParams) e
 }
 
 // getLockPath calculates the path to a lock file
-func getLockPath(params *RequestMetadataParams) (string, error) {
-	return filepath.Abs(params.State + ".lock")
+func getLockPath(params *RequestMetadataParams) string {
+	return params.State + ".lock"
 }
 
 // getLockBranchName calculates the locking branch name
-func getLockBranchName(params *RequestMetadataParams) (string, error) {
-	return filepath.Abs(filepath.Join("locks", params.State))
+func getLockBranchName(params *RequestMetadataParams) string {
+	return "locks/" + params.State
 }
