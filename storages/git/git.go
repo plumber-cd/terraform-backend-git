@@ -30,18 +30,18 @@ func authBasicHTTP() (*http.BasicAuth, error) {
 		return nil, errors.New("Git protocol was http but username was not set")
 	}
 
-	token, okToken := os.LookupEnv("GIT_TOKEN")
-	if !okToken {
-		password, okPassword := os.LookupEnv("GIT_PASSWORD")
-		if !okPassword {
+	password, okPassword := os.LookupEnv("GIT_PASSWORD")
+	if !okPassword {
+		ghToken, okGhToken := os.LookupEnv("GITHUB_TOKEN")
+		if !okGhToken {
 			return nil, errors.New("Git protocol was http but neither password nor token was set")
 		}
-		token = password
+		password = ghToken
 	}
 
 	return &http.BasicAuth{
 		Username: username,
-		Password: token,
+		Password: password,
 	}, nil
 }
 
