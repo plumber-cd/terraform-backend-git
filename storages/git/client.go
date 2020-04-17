@@ -29,6 +29,7 @@ func (storageClient *StorageClient) ParseMetadataParams(request *http.Request, m
 	params := RequestMetadataParams{
 		Repository: query.Get("repository"),
 		Ref:        query.Get("ref"),
+		State:      query.Get("state"),
 	}
 
 	if params.Repository == "" {
@@ -39,14 +40,9 @@ func (storageClient *StorageClient) ParseMetadataParams(request *http.Request, m
 		params.Ref = "master"
 	}
 
-	state, err := filepath.Abs(query.Get("state"))
-	if err != nil {
-		return err
-	}
-	if state == "" {
+	if params.State == "" {
 		return errors.New("Missing parameter 'state'")
 	}
-	params.State = state
 
 	metadata.Params = &params
 
