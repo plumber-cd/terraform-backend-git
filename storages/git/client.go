@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -28,7 +29,7 @@ func (storageClient *StorageClient) ParseMetadataParams(request *http.Request, m
 	params := RequestMetadataParams{
 		Repository: query.Get("repository"),
 		Ref:        query.Get("ref"),
-		State:      query.Get("state"),
+		State:      filepath.Clean(query.Get("state")),
 	}
 
 	if params.Repository == "" {
