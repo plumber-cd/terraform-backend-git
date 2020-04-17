@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fix
 
+- If `git.state` contained elements of relative path (i.e. `foo/./bar` or `foo//bar`) - now correctly handle this scenario
+
+## [0.0.8] - 2020-04-17
+
+### Fix
+
 - Git storage: `GIT_TOKEN` was used instead of `GITHUB_TOKEN` env variable
 
 ## [0.0.6] - 2020-04-15
