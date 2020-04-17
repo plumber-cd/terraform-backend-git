@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7] - 2020-04-16
+
+### Fix
+
+- Git storage: `GIT_TOKEN` was used instead of `GITHUB_TOKEN` env variable
+
 ## [0.0.6] - 2020-04-15
 
 ### Fix
