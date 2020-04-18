@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.11] - 2020-04-18
+
+### Fix
+
+- Git storage: SSH Agent auth type was crashing the backend
+
 ## [0.0.10] - 2020-04-17
 
 ### Fix

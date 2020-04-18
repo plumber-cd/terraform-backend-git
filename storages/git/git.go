@@ -45,13 +45,23 @@ func authBasicHTTP() (*http.BasicAuth, error) {
 	}, nil
 }
 
-// authSSH discovers environment for SSH credentials
-func authSSH() (*sshGit.PublicKeys, error) {
-	// If SSH_AUTH_SOCK env variable was defined - nothing else needs to be configured
-	if _, ok := os.LookupEnv("SSH_AUTH_SOCK"); ok {
+// authSSHAgent discovers environment for SSH_AUTH_SOCK and builds NewSSHAgentAuth
+// If returned null - no agent was set up
+func authSSHAgent(params *RequestMetadataParams) (*sshGit.PublicKeysCallback, error) {
+	if _, ok := os.LookupEnv("SSH_AUTH_SOCK"); !ok {
 		return nil, nil
 	}
 
+	e, err := transport.NewEndpoint(params.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	return sshGit.NewSSHAgentAuth(e.User)
+}
+
+// authSSH discovers environment for SSH credentials
+func authSSH() (*sshGit.PublicKeys, error) {
 	pemFile, okPem := os.LookupEnv("SSH_PRIVATE_KEY")
 	if !okPem {
 		// Ok then, try to discover SSH keys in the user home
@@ -89,13 +99,24 @@ func auth(params *RequestMetadataParams) (transport.AuthMethod, error) {
 		return auth, nil
 	}
 
-	// Otherwise we assume protocol was SSH.
-	auth, err := authSSH()
+	// Otherwise we assume protocol was SSH
+
+	// First, try ssh agent
+	agent, err := authSSHAgent(params)
+	if err != nil {
+		return nil, err
+	}
+	if agent != nil {
+		return agent, nil
+	}
+
+	// Otherwise, try to find some ssh keys
+	key, err := authSSH()
 	if err != nil {
 		return nil, err
 	}
 
-	return auth, nil
+	return key, nil
 }
 
 // ref convert short branch name string to a full ReferenceName
@@ -312,7 +333,7 @@ func (storageSession *storageSession) commit(msg string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	userName := user.Name
 	if userName == "" {
 		userName = user.Username
