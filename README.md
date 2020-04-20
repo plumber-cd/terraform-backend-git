@@ -1,6 +1,6 @@
-# Terraform State management using Git repository
+# Terraform State management using Git
 
-- [Terraform State management using Git repository](#terraform-state-management-using-git-repository)
+- [Terraform State management using Git](#terraform-state-management-using-git)
   - [Terraform HTTP backend to manage state in Git](#terraform-http-backend-to-manage-state-in-git)
     - [Usage](#usage)
     - [Configuration](#configuration)
