@@ -3,8 +3,12 @@
 - [Terraform State management using Git repository](#terraform-state-management-using-git-repository)
   - [Terraform HTTP backend to manage state in Git](#terraform-http-backend-to-manage-state-in-git)
     - [Usage](#usage)
+    - [Configuration](#configuration)
+    - [Git Credentials](#git-credentials)
+    - [State Encryption](#state-encryption)
+    - [Running backend remotely](#running-backend-remotely)
     - [Why not native Terraform Backend](#why-not-native-terraform-backend)
-  - [Why](#why)
+  - [Why storing state in Git](#why-storing-state-in-git)
   - [Proposed solution](#proposed-solution)
     - [Lock](#lock)
     - [CheckLock](#checklock)
@@ -13,7 +17,7 @@
     - [UpdateState](#updatestate)
     - [DeleteState](#deletestate)
 
-Git as Terraform backend? Seriously? I know, might sound like a stupid idea at first, but let me try to convince you [why](#why) it's actually not.
+Git as Terraform backend? Seriously? I know, might sound like a stupid idea at first, but let me try to convince you [why](#why-storing-state-in-git) it's actually not.
 
 ## Terraform HTTP backend to manage state in Git
 
@@ -36,12 +40,12 @@ terraform-backend-git git \
   --repository git@github.com:my-org/tf-state.git \
   --ref master \
   --state my/state.json \
-    terraform [any tf args] init|plan|apply
+    terraform [any tf args] init|plan|apply [more tf args]
 ```
 
-`terraform-backend-git` will act as a wrapper - it will start a backend, generate `*.auto.tf` file in current working directory and fall back to terraform accordingly to your input. After done it will cleanup `*.auto.tf` file it created. The file would contain an HTTP backend configuration pointing to that backend instance, so you shouldn't be having any other backend configurations in your TF code.
+Your current working directory should be where you want to run `terraform` (your module). `terraform-backend-git` will act as a wrapper - it will start a backend, generate HTTP backend configuration pointing to that backend instance (it'll be an `*.auto.tf` file) and then call terraform accordingly to your input. After done it will cleanup any `*.auto.tf` it created. You shouldn't be having any other backend configurations in your TF code, otherwise it will fail with conflict.
 
-Alternatively, you could use `terraform-backend-git.hcl` config file and put it in the current working directory:
+You could also use `terraform-backend-git.hcl` config file and put it in the same directory, that would allow you to store configuration in Git along with your module:
 
 ```hcl
 git.repository = "git@github.com:my-org/tf-state.git"
@@ -51,7 +55,11 @@ git.state = "my/state.json"
 
 You can specify custom path to `hcl` config file using `--config` arg.
 
-Alternatively, you could have more control over the process if you are using something like `terragrunt`. Bottom line, your Terraform backend config should be looking like this:
+You can have a mixed setup, where some parts of configuration comes from `terraform-backend-git.hcl` and some from CLI arguments.
+
+Alternatively, you could have more control over the process (for instance if you are using something like `terragrunt`). For that, you'll need to start `terraform-backend-git` in a background and configure your Terraform to point to it. In this scenario, all configuration for the backend will be coming from Terraform in a form of HTTP parameters.
+
+Your Terraform backend configuration should be looking something like this:
 
 ```terraform
 terraform {
@@ -63,31 +71,67 @@ terraform {
 }
 ```
 
-Then you could use it like this:
+Note that `lock_address` and `unlock_address` should be explicitly defined (both of them), otherwise Terraform will not make any locking or unlocking calls and assume that backend does not support locking and unlocking (how would locking be supported without unlocking?...).
+
+Once you have your Terraform configured, you can start the backend in the background:
 
 ```bash
 terraform-backend-git &
+```
+
+Now, just run Terraform and it will use the backend:
+
+```bash
 terraform init|plan|apply
+```
+
+When you're done, you'll want to stop the backend. It uses `pid` files, so you could stop it like this:
+
+```bash
 terraform-backend-git stop
 ```
 
-Note that `lock_address` and `unlock_address` should be explicitly defined (both of them), otherwise Terraform would not make any locking or unlocking calls and assume that backend does not support locking and unlocking (how would locking be supported without unlocking?...).
+### Configuration
 
-`--ref` and `ref` is optional, by default it will be set to `master`.
+CLI | `terraform-backend-git.hcl` | HTTP | Description
+--- | --- | --- | ---
+`--repository` | `git.repository` | `repository` | Required; Which repository to use for storing TF state?
+`--ref` | `git.ref` | `ref` | Optional; Which branch to use in that `repository`? Default: `master`.
+`--state` | `git.state` | `state` | Required; Path to the state file in that `repository`.
+`--address` | `address` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
+`--access-logs` | `accessLogs` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
 
-`--state`/`state` is a path to the state file in the repository.
+### Git Credentials
 
-Both HTTP and SSH protocols are supported for Git. For HTTP credentials, please define `GIT_USERNAME` and either `GIT_PASSWORD` or `GITHUB_TOKEN` environment variables. For SSH, it will try to use `SSH_AUTH_SOCK` environment variable if defined (assuming `ssh-agent` has been started), otherwise it will need a private key file. You can define a path to it via `SSH_PRIVATE_KEY` environment variable, and if not defined it will try to use `~/.ssh/id_rsa`. For SSH, you can also set environment variable `StrictHostKeyChecking=no` if needed. Unfortunately `go-git` will not mimic Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach.
+Both HTTP and SSH protocols are supported for Git. As of now, any sensitive type of configuration only supported via environment variables.
 
-To enable backend encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` environment variable to set a passphrase. Backend will encrypt and decrypt (using AES256) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption. Traffic between Terraform and this backend stays unencrypted at all times.
+Variable | Description
+--- | ---
+`GIT_USERNAME` | Specify username for Git, only required for HTTP protocol.
+`GIT_PASSWORD`/`GITHUB_TOKEN` | Git password or token for HTTP protocol. In case of token you still have to specify `GIT_USERNAME`.
+`SSH_AUTH_SOCK` | `ssh-agent` socket
+`SSH_PRIVATE_KEY` | Path to SSH key for Git access.
+`StrictHostKeyChecking` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
 
-This backend could be started standalone and remotely, but I would not recommend doing that.
+Backend will determine which protocol you are using based on `repository` URL.
 
-Besides that Terraform does not perform any encryption before sending the state to HTTP backend, there is also no authentication whatsoever. Running remotely accessible backend like this would not be secure - anyone who can make HTTP calls to it would be able to get, update or delete your state files with no credentials. Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interceptions, but that's the best we can do for now, either until this implementation gets into Terraform as a native Backend implementation, or Backends become a pluggable options, or gRCP backend being implemented or Terraform adds some auth/encryption options to the HTTP backend protocol, or some other miracle.
+For SSH, it will see if `ssh-agent` by looking into `SSH_AUTH_SOCK` variable, and if not - it will need a private key. It will try to use `~/.ssh/id_rsa` unless you explicitly specify a different path via `SSH_PRIVATE_KEY`.
 
-You may get creative and wrap backend traffic into API Gateway or ServiceMesh like Istio, to add encryption and authentication, then you will want to use this option `--address=:6061` so the backend will bind to `0.0.0.0` and become remotely accessible. You can change the port that way too, i.e. `--address=127.0.0.1:6062`.
+Unfortunately `go-git` will not mimic real Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach.
 
-Use `--access-logs` to enable HTTP access logs.
+### State Encryption
+
+To enable state encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` environment variable to set a passphrase. Backend will encrypt and decrypt (using AES256, server-side) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption for HTTP backend. Traffic between Terraform and this backend stays unencrypted at all times.
+
+### Running backend remotely
+
+This backend could be started standalone and remotely, but **DON'T DO IT**.
+
+Besides the fact that Terraform does not perform any encryption before sending the state to HTTP backend, there is also **no authentication whatsoever**. Running remotely accessible backend like this would **not** be secure - **anyone who can make HTTP calls to it would be able to get, update or delete your state files with no credentials**.
+
+Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interception or spoofing (or even having a bad actor who already got the access to the host to send HTTP requests directly to the endpoint), but that's the best we can do for now, either until this implementation gets into Terraform as a native Backend implementation, or Backends become a pluggable options, or gRCP backend being implemented or Terraform adds some auth/encryption options to the HTTP backend protocol, or some other miracle.
+
+You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add encryption and authentication, and then and only then you will want to use option `--address=:6061` so the backend will bind to `0.0.0.0` and become remotely accessible. You can change the port that way too, i.e. `--address=127.0.0.1:6062`.
 
 ### Why not native Terraform Backend
 
@@ -95,7 +139,7 @@ Unfortunately, Terraform Backends is not pluggable like Providers are, see https
 
 Due to this, I couldn't make a proper native Terraform backend implementation for Git on a side, it should be implemented and added to https://github.com/hashicorp/terraform code base. There is an open ticket to do it https://github.com/hashicorp/terraform/issues/24603, but it is unclear when this would happen ([if it will at all](https://github.com/hashicorp/terraform/issues/24603#issuecomment-613533258)). That said I figured this HTTP backend implementation might be useful for now.
 
-## Why
+## Why storing state in Git
 
 So you must be wondering why storing Terraform state in Git might be such a good idea.
 
