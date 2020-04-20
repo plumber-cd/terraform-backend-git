@@ -93,7 +93,7 @@ Use `--access-logs` to enable HTTP access logs.
 
 Unfortunately, Terraform Backends is not pluggable like Providers are, see https://github.com/hashicorp/terraform/issues/5877.
 
-Due to this, I couldn't make a proper native Terraform backend implementation for Git on a side, it should be implemented and added to https://github.com/hashicorp/terraform code base. There is an open ticket to do it https://github.com/hashicorp/terraform/issues/24603, but it is unclear when this would happen (if it will at all). That said I figured this HTTP backend implementation might be useful for now.
+Due to this, I couldn't make a proper native Terraform backend implementation for Git on a side, it should be implemented and added to https://github.com/hashicorp/terraform code base. There is an open ticket to do it https://github.com/hashicorp/terraform/issues/24603, but it is unclear when this would happen ([if it will at all](https://github.com/hashicorp/terraform/issues/24603#issuecomment-613533258)). That said I figured this HTTP backend implementation might be useful for now.
 
 ## Why
 
