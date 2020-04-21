@@ -39,6 +39,8 @@ Installation with [Brew](https://github.com/plumber-cd/terraform-backend-git/iss
 
 Download a binary from [Releases](https://github.com/plumber-cd/terraform-backend-git/releases). All binaries built with GitHub Actions and you can inspect [how](.github/workflows/release.yml).
 
+Don't forget to add it to your `PATH`.
+
 #### From Sources
 
 You can build it yourself, of course (and Go made it really easy):
@@ -46,6 +48,8 @@ You can build it yourself, of course (and Go made it really easy):
 ```bash
 go build github.com/plumber-cd/terraform-backend-git@${version}
 ```
+
+Don't forget to add it to your `PATH`.
 
 ### Usage
 
