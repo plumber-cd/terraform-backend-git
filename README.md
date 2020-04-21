@@ -6,7 +6,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
 
 - [Terraform State management using Git](#terraform-state-management-using-git)
   - [Table of Contents](#table-of-contents)
-  - [Terraform HTTP backend to manage state in Git](#terraform-http-backend-to-manage-state-in-git)
+  - [Getting Started](#getting-started)
     - [Usage](#usage)
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
@@ -22,7 +22,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
     - [UpdateState](#updatestate)
     - [DeleteState](#deletestate)
 
-## Terraform HTTP backend to manage state in Git
+## Getting Started
 
 ### Usage
 
