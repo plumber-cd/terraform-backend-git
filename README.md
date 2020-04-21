@@ -7,6 +7,10 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
 - [Terraform State management using Git](#terraform-state-management-using-git)
   - [Table of Contents](#table-of-contents)
   - [Getting Started](#getting-started)
+    - [Installation](#installation)
+      - [Brew](#brew)
+      - [From Release](#from-release)
+      - [From Sources](#from-sources)
     - [Usage](#usage)
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
@@ -24,19 +28,29 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
 
 ## Getting Started
 
-### Usage
+### Installation
 
-First, download a backend from [release](https://github.com/plumber-cd/terraform-backend-git/releases) page.
+#### Brew
 
-Alternatively, you can build it yourself:
+Installation with [Brew](https://github.com/plumber-cd/terraform-backend-git/issues/8) is coming later.
+
+#### From Release
+
+Download a binary from [Releases](https://github.com/plumber-cd/terraform-backend-git/releases). All binaries built with GitHub Actions and you can inspect [how](.github/workflows/release.yml).
+
+#### From Sources
+
+You can build it yourself, of course (and Go made it really easy):
 
 ```bash
-go build github.com/plumber-cd/terraform-backend-git
+go build github.com/plumber-cd/terraform-backend-git@${version}
 ```
 
 Of course, you must be having Terraform installed already.
 
-You should be good to Go:
+### Usage
+
+Assuming you've installed Terraform and this backend, you should be good to Go:
 
 ```bash
 terraform-backend-git git \
@@ -101,6 +115,7 @@ CLI | `terraform-backend-git.hcl` | HTTP | Description
 `--repository` | `git.repository` | `repository` | Required; Which repository to use for storing TF state?
 `--ref` | `git.ref` | `ref` | Optional; Which branch to use in that `repository`? Default: `master`.
 `--state` | `git.state` | `state` | Required; Path to the state file in that `repository`.
+`--config` | - | - | Optional; Path to the `hcl` config file.
 `--address` | `address` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
 `--access-logs` | `accessLogs` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
 
