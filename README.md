@@ -172,7 +172,7 @@ Besides the fact that Terraform does not perform any encryption before sending t
 
 Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interception or spoofing (or even having a bad actor who already got the access to the host to send HTTP requests directly to the endpoint), but that's the best we can do for now, either until this implementation gets into Terraform as a native Backend implementation, or Backends become a pluggable options, or gRCP backend being implemented or Terraform adds some auth/encryption options to the HTTP backend protocol, or some other miracle.
 
-You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add encryption and authentication, and then and only then you will want to use option `--address=:6061` so the backend will bind to `0.0.0.0` and become remotely accessible. You can change the port that way too, i.e. `--address=127.0.0.1:6062`.
+You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add encryption and authentication, and then and only then you will want to use option `--address=:6061` so the backend will bind to `0.0.0.0` and become remotely accessible.
 
 ### Why not native Terraform Backend
 
