@@ -1,6 +1,11 @@
 # Terraform State management using Git
 
+Git as Terraform backend? Seriously? I know, might sound like a stupid idea at first, but let me try to convince you [why](#why-storing-state-in-git) it's actually not.
+
+## Table of Contents
+
 - [Terraform State management using Git](#terraform-state-management-using-git)
+  - [Table of Contents](#table-of-contents)
   - [Terraform HTTP backend to manage state in Git](#terraform-http-backend-to-manage-state-in-git)
     - [Usage](#usage)
     - [Configuration](#configuration)
@@ -16,8 +21,6 @@
     - [GetState](#getstate)
     - [UpdateState](#updatestate)
     - [DeleteState](#deletestate)
-
-Git as Terraform backend? Seriously? I know, might sound like a stupid idea at first, but let me try to convince you [why](#why-storing-state-in-git) it's actually not.
 
 ## Terraform HTTP backend to manage state in Git
 
