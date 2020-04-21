@@ -148,13 +148,13 @@ Variable | Description
 --- | ---
 `GIT_USERNAME` | Specify username for Git, only required for HTTP protocol.
 `GIT_PASSWORD`/`GITHUB_TOKEN` | Git password or token for HTTP protocol. In case of token you still have to specify `GIT_USERNAME`.
-`SSH_AUTH_SOCK` | `ssh-agent` socket
+`SSH_AUTH_SOCK` | `ssh-agent` socket.
 `SSH_PRIVATE_KEY` | Path to SSH key for Git access.
 `StrictHostKeyChecking` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
 
 Backend will determine which protocol you are using based on `repository` URL.
 
-For SSH, it will see if `ssh-agent` by looking into `SSH_AUTH_SOCK` variable, and if not - it will need a private key. It will try to use `~/.ssh/id_rsa` unless you explicitly specify a different path via `SSH_PRIVATE_KEY`.
+For SSH, it will see if `ssh-agent` is running by looking into `SSH_AUTH_SOCK` variable, and if not - it will need a private key. It will try to use `~/.ssh/id_rsa` unless you explicitly specify a different path via `SSH_PRIVATE_KEY`.
 
 Unfortunately `go-git` will not mimic real Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach.
 
