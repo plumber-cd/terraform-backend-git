@@ -12,6 +12,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
       - [From Release](#from-release)
       - [From Sources](#from-sources)
     - [Usage](#usage)
+    - [Wrappers CLI](#wrappers-cli)
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
     - [State Encryption](#state-encryption)
@@ -105,6 +106,24 @@ When you're done, you'll want to stop the backend. It uses `pid` files, so you c
 ```bash
 terraform-backend-git stop
 ```
+
+### Wrappers CLI
+
+Command line format goes like this:
+
+```bash
+terraform-backend-git [any backend options] <storage type> [any storage options] <wrapper> [any sub-process arguments]
+```
+
+For instance:
+
+```bash
+terraform-backend-git --access-logs git --state my/state.json terraform -detailed-exitcode -out=plan.out
+```
+
+In this case, `--access-logs` was a global argument to the backend, `git` was a specific Storage Type and `--state` was an argument for it, and `terraform` was a wrapper name that will start `terraform` as a sub-process and any arguments to the wrapper will be passed to the sub-process as-is.
+
+This is so we could have more Storage Types supported in the future as well as more wrappers to use with them (like `terragrunt` or `terratest`). Storage Type implementation would define how to store state, and Wrapper implementation defines how to run a sub-process (in `terraform` case we generate `*.auto.tf` files to define HTTP backend configuration).
 
 ### Configuration
 
