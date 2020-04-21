@@ -46,8 +46,6 @@ You can build it yourself, of course (and Go made it really easy):
 go build github.com/plumber-cd/terraform-backend-git@${version}
 ```
 
-Of course, you must be having Terraform installed already.
-
 ### Usage
 
 Assuming you've installed Terraform and this backend, you should be good to Go:
