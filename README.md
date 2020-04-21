@@ -164,7 +164,9 @@ To enable state encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` 
 
 ### Running backend remotely
 
-This backend could be started standalone and remotely, but **DON'T DO IT**.
+First of all, **DON'T DO IT**.
+
+It can be done, but again - **DON'T DO IT**.
 
 Besides the fact that Terraform does not perform any encryption before sending the state to HTTP backend, there is also **no authentication whatsoever**. Running remotely accessible backend like this would **not** be secure - **anyone who can make HTTP calls to it would be able to get, update or delete your state files with no credentials**.
 
