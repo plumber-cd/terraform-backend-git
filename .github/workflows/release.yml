@@ -14,6 +14,8 @@ jobs:
         os: [linux, darwin, windows]
         arch: [amd64, 386]
     steps:
+      - name: Set RELEASE_VERSION
+        run: echo ::set-env name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
       - name: Setup Go
         uses: actions/setup-go@v1
         with:
@@ -28,7 +30,7 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
+        run: go build -ldflags="-X 'main.Version=${{ env.RELEASE_VERSION }}'" -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:

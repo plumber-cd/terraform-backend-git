@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.13] - 2020-05-30
+
+### Added
+
+- `terraform-backend-git version` command
+
 ## [0.0.12] - 2020-04-18
 
 ### Added
