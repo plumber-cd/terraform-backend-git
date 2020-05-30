@@ -18,6 +18,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var Version = "development"
+
 var cfgFile string
 
 // rootCmd main command that just starts the server and keeps listening on port until terminated
@@ -31,6 +33,15 @@ var rootCmd = &cobra.Command{
 		}
 
 		startServer()
+	},
+}
+
+// versionCmd will print the version
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(Version)
 	},
 }
 
@@ -112,6 +123,8 @@ func main() {
 	log.SetPrefix("[terraform-backend-git]: ")
 
 	cobra.OnInitialize(initConfig)
+
+	rootCmd.AddCommand(versionCmd)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is terraform-backend-git.hcl)")
 
