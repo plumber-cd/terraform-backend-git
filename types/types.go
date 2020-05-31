@@ -21,10 +21,12 @@ func (err *ErrLocked) Error() string {
 var (
 	// ErrStateDidNotExisted indicate that the state did not existed
 	ErrStateDidNotExisted = errors.New("state did not existed")
-	// ErrLockingConflict indicate the lock was already aquired by someone else
-	ErrLockingConflict = errors.New("the lock was already aquired by someone else")
+	// ErrLockingConflict indicate the lock was already acquired by someone else
+	ErrLockingConflict = errors.New("the lock was already acquired by someone else")
 	// ErrLockMissing indicate that the lock didn't existed when it was expected/required to
 	ErrLockMissing = errors.New("was not locked")
+	// ErrUnauthorized indicates that the action was not authorized
+	ErrUnauthorized = errors.New("Unauthorized")
 )
 
 // LockInfo represents a TF Lock Metadata.

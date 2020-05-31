@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/gorilla/handlers"
 	"github.com/mitchellh/go-homedir"
 	"github.com/plumber-cd/terraform-backend-git/backend"
 	"github.com/plumber-cd/terraform-backend-git/server"
@@ -18,6 +16,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Version holds the version binary built with - must be injected from build process via -ldflags="-X 'main.Version=vX.Y.Z'"
 var Version = "development"
 
 var cfgFile string
@@ -32,7 +31,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		startServer()
+		server.Start()
 	},
 }
 
@@ -68,26 +67,6 @@ var wrappersCmds = []*cobra.Command{
 	terraformWrapperCmd,
 }
 
-// startServer listen for traffic
-func startServer() {
-	backend.KnownStorageTypes = map[string]types.StorageClient{
-		"git": git.NewStorageClient(),
-	}
-
-	http.HandleFunc("/", server.HandleFunc)
-
-	var handler http.Handler
-	if viper.GetBool("accessLogs") {
-		handler = handlers.LoggingHandler(os.Stdout, http.DefaultServeMux)
-	} else {
-		handler = nil
-	}
-
-	address := viper.GetString("address")
-	log.Println("listen on", address)
-	log.Fatal(http.ListenAndServe(address, handler))
-}
-
 func initConfig() {
 	viper.SetConfigType("hcl")
 	viper.SetConfigName("terraform-backend-git")
@@ -118,6 +97,10 @@ func initConfig() {
 }
 
 func main() {
+	backend.KnownStorageTypes = map[string]types.StorageClient{
+		"git": git.NewStorageClient(),
+	}
+
 	// keep the output clean as in wrapper mode it'll mess out with Terraform own output
 	log.SetFlags(0)
 	log.SetPrefix("[terraform-backend-git]: ")

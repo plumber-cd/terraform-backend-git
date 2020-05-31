@@ -2,17 +2,97 @@
 package server
 
 import (
+	"crypto/subtle"
 	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/plumber-cd/terraform-backend-git/backend"
+	"github.com/plumber-cd/terraform-backend-git/crypt"
 	"github.com/plumber-cd/terraform-backend-git/types"
+	"github.com/spf13/viper"
 )
 
-// HandleFunc main function responsible for routing
-func HandleFunc(response http.ResponseWriter, request *http.Request) {
+// Start listen for traffic
+func Start() {
+	var h http.Handler
+
+	h = http.HandlerFunc(handleFunc)
+
+	h = basicAuth(h)
+
+	if viper.GetBool("accessLogs") {
+		log.Println("WARNING: Access Logs enabled")
+		h = handlers.LoggingHandler(os.Stdout, h)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", h)
+
+	address := viper.GetString("address")
+	log.Println("listen on", address)
+	log.Fatal(http.ListenAndServe(address, mux))
+}
+
+// basicAuth checking for user authentication
+func basicAuth(next http.Handler) http.Handler {
+	backendUsername, okBackendUsername := os.LookupEnv("TF_BACKEND_GIT_HTTP_USERNAME")
+	backendPassword, okBackendPassword := os.LookupEnv("TF_BACKEND_GIT_HTTP_PASSWORD")
+	if !okBackendUsername || !okBackendPassword {
+		log.Println("WARNING: HTTP basic auth is disabled, please specify TF_BACKEND_GIT_HTTP_USERNAME and TF_BACKEND_GIT_HTTP_PASSWORD")
+		return next
+	}
+
+	backendUsername, err := crypt.MD5(backendUsername)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	backendPassword, err = crypt.MD5(backendPassword)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		handler := handler{
+			Request:  request,
+			Response: response,
+		}
+
+		u, p, ok := request.BasicAuth()
+		if !ok {
+			handler.serverError(types.ErrUnauthorized)
+			return
+		}
+
+		u, err := crypt.MD5(u)
+		if err != nil {
+			handler.serverError(types.ErrUnauthorized)
+			return
+		}
+
+		p, err = crypt.MD5(p)
+		if err != nil {
+			handler.serverError(types.ErrUnauthorized)
+			return
+		}
+
+		if subtle.ConstantTimeCompare([]byte(u), []byte(backendUsername)) != 1 || subtle.ConstantTimeCompare([]byte(p), []byte(backendPassword)) != 1 {
+			handler.clientError(types.ErrUnauthorized)
+			return
+		}
+
+		if next != nil {
+			next.ServeHTTP(response, request)
+		}
+	})
+}
+
+// handleFunc main function responsible for routing
+func handleFunc(response http.ResponseWriter, request *http.Request) {
 	handler := handler{
 		Request:  request,
 		Response: response,
@@ -137,7 +217,7 @@ func (handler *handler) clientError(err error) {
 	handler.responseError(http.StatusBadRequest, "400 - Bad Request", err)
 }
 
-// responseError is a handler that will try to read known errors and formulate approapriate responses to them
+// responseError is a handler that will try to read known errors and formulate appropriate responses to them
 // If error was unknown, just use defaultCode and defaultResponse error message.
 func (handler *handler) responseError(defaultCode int, defaultResponse string, actualErr error) {
 	log.Printf("%s", actualErr)
@@ -152,9 +232,14 @@ func (handler *handler) responseError(defaultCode int, defaultResponse string, a
 			handler.Response.Write([]byte("428 - Locking Required"))
 		case types.ErrStateDidNotExisted:
 			handler.Response.WriteHeader(http.StatusNoContent)
+		case types.ErrUnauthorized:
+			handler.Response.Header().Set("WWW-Authenticate", `Basic realm=terraform-backend-git`)
+			handler.Response.WriteHeader(http.StatusUnauthorized)
+			handler.Response.Write([]byte("401 - Unauthorized"))
 		default:
 			handler.Response.WriteHeader(defaultCode)
 			handler.Response.Write([]byte(defaultResponse))
 		}
+
 	}
 }
