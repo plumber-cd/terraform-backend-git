@@ -17,6 +17,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
     - [Git Credentials](#git-credentials)
     - [State Encryption](#state-encryption)
     - [Running backend remotely](#running-backend-remotely)
+    - [Basic HTTP Authentication](#basic-http-authentication)
     - [Why not native Terraform Backend](#why-not-native-terraform-backend)
   - [Why storing state in Git](#why-storing-state-in-git)
   - [Proposed solution](#proposed-solution)
@@ -131,14 +132,14 @@ This is so we could have more Storage Types supported in the future as well as m
 
 ### Configuration
 
-CLI | `terraform-backend-git.hcl` | HTTP | Description
+CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend config | Description
 --- | --- | --- | ---
-`--repository` | `git.repository` | `repository` | Required; Which repository to use for storing TF state?
-`--ref` | `git.ref` | `ref` | Optional; Which branch to use in that `repository`? Default: `master`.
-`--state` | `git.state` | `state` | Required; Path to the state file in that `repository`.
-`--config` | - | - | Optional; Path to the `hcl` config file.
-`--address` | `address` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
-`--access-logs` | `accessLogs` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
+`--repository` | `git.repository` | `TF_BACKEND_GIT_GIT_REPOSITORY` |`repository` | Required; Which repository to use for storing TF state?
+`--ref` | `git.ref` | `TF_BACKEND_GIT_GIT_REF` |`ref` | Optional; Which branch to use in that `repository`? Default: `master`.
+`--state` | `git.state` | `TF_BACKEND_GIT_GIT_STATE` | `state` | Required; Path to the state file in that `repository`.
+`--config` | - | - | - | Optional; Path to the `hcl` config file.
+`--address` | `address` | `TF_BACKEND_GIT_ADDRESS` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
+`--access-logs` | `accessLogs` | `TF_BACKEND_GIT_ACCESSLOGS` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
 
 ### Git Credentials
 
@@ -168,11 +169,33 @@ First of all, **DON'T DO IT**.
 
 It can be done, but again - **DON'T DO IT**.
 
-Besides the fact that Terraform does not perform any encryption before sending the state to HTTP backend, there is also **no authentication whatsoever**. Running remotely accessible backend like this would **not** be secure - **anyone who can make HTTP calls to it would be able to get, update or delete your state files with no credentials**.
+First of all, by default, Terraform does not perform any encryption before sending the state to HTTP backend. Also, running remotely accessible backend like this without authentication would **not** be secure - **anyone who can make HTTP calls to it would be able to get, update or delete your state files**.
 
-Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interception or spoofing (or even having a bad actor who already got the access to the host to send HTTP requests directly to the endpoint), but that's the best we can do for now, either until this implementation gets into Terraform as a native Backend implementation, or Backends become a pluggable options, or gRCP backend being implemented or Terraform adds some auth/encryption options to the HTTP backend protocol, or some other miracle.
+But even then, this backend is not aiming to become a standalone project. Once backends in Terraform [can be pluggable gRPC components](https://github.com/hashicorp/terraform/issues/5877), this backend will be converted to a normal TF gRPC plugin, HTTP support will be removed, and binaries will not be distributed separately anymore (I believe TF will be able to fetch them automatically just like it does it for providers right now). Until that happens, basically HTTP protocol is used instead of gRPC, and downloading and running this backend is delegated to the user. Therefore this backend recommended to be used in plugin/wrapper notion, i.e. you start it just before running Terraform and then you stop it right after Terraform is finished, and it happens on the same host. The `wrapper` mode makes that very scenario even easier, it run Terraform for you so you don't have to maintain multiple console windows. At the end of the day, you are not running Terraform AWS Provider remotely, are you?
 
-You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add encryption and authentication, and then and only then you will want to use option `--address=:6061` so the backend will bind to `0.0.0.0` and become remotely accessible.
+Even though the traffic can be secured with HTTP TLS encryption ([WIP](https://github.com/plumber-cd/terraform-backend-git/issues/12)), and [Basic HTTP Authentication](#basic-http-authentication) can be added, authentication and encryption is there just for the sake of securing local traffic, and even when it's enabled - remote operations mode is not recommended.
+
+Therefore it will not be considered to implement any rich HTTP-related features such as AD/Okta HTTP authentication, or any other features that will move this project further away from the goal to become a gRPC plugin.
+
+Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interception or spoofing (or even having a bad actor who already got the access to the host to send HTTP requests directly to the endpoint), so consider enabling Basic HTTP Authentication and TLS encryption.
+
+You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add external layer of encryption and authentication, and then at your discretion you may run it with `--address=:6061` argument so the backend will bind to `0.0.0.0` and become remotely accessible.
+
+### Basic HTTP Authentication
+
+You can use `TF_BACKEND_GIT_HTTP_USERNAME` and `TF_BACKEND_GIT_HTTP_PASSWORD` environment variables to add an extra layer of protection. In `wrapper` mode, same environment variables will be used to render `*.auto.tf` config for Terraform, but if you are using backend in standalone mode - you will have to tell these credentials to the Terraform explicitly:
+
+```terraform
+terraform {
+  backend "http" {
+    ...
+    username = "user"
+    password = "pswd"
+  }
+}
+```
+
+Note that if either username or password changes, Terraform will consider this as a backend configuration change and will want to ask you to migrate state. Since backend will not be accepting old credentials anymore - it will fail to `init` (can't read the "old" state). Consider deleting your local `.terraform/terraform.tfstate` file to fix this.
 
 ### Why not native Terraform Backend
 

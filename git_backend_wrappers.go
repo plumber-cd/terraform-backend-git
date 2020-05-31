@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/plumber-cd/terraform-backend-git/server"
 )
 
 // gitHTTPBackendConfigPath is a path to the backend tf config to generate
@@ -25,6 +27,8 @@ terraform {
 		address = "http://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
 		lock_address = "http://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
 		unlock_address = "http://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
+		username = "{{ .username }}"
+		password = "{{ .password }}"
 	}
 }
 		`)
@@ -32,14 +36,19 @@ terraform {
 			log.Fatal(err)
 		}
 
+		username, _ := os.LookupEnv("TF_BACKEND_GIT_HTTP_USERNAME")
+		password, _ := os.LookupEnv("TF_BACKEND_GIT_HTTP_PASSWORD")
+
 		addr := strings.Split(viper.GetString("address"), ":")
 		p := map[string]string{
-			"port": addr[len(addr)-1],
+			"port":     addr[len(addr)-1],
+			"username": username,
+			"password": password,
 		}
 
 		for _, flag := range []string{"repository", "ref", "state"} {
 			if p[flag] = viper.GetString("git." + flag); p[flag] == "" {
-				log.Fatal(err)
+				log.Fatalf("%s must be set", flag)
 			}
 		}
 
@@ -53,7 +62,7 @@ terraform {
 			log.Fatal(err)
 		}
 
-		go startServer()
+		go server.Start()
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if err := os.Remove(gitHTTPBackendConfigPath); err != nil {
