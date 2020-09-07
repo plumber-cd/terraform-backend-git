@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/plumber-cd/terraform-backend-git/types"
+	"github.com/spf13/viper"
 )
 
 // NewStorageClient creates new StorageClient
@@ -27,9 +28,21 @@ func (storageClient *StorageClient) ParseMetadataParams(request *http.Request, m
 	query := request.URL.Query()
 
 	params := RequestMetadataParams{
-		Repository: query.Get("repository"),
-		Ref:        query.Get("ref"),
-		State:      filepath.Clean(query.Get("state")),
+		Repository: viper.GetString("git.repository"),
+		Ref:        viper.GetString("git.ref"),
+		State:      viper.GetString("git.state"),
+	}
+
+	if query.Get("repository") != "" {
+		params.Repository = query.Get("repository")
+	}
+
+	if query.Get("ref") != "" {
+		params.Ref = query.Get("ref")
+	}
+
+	if query.Get("state") != "" {
+		params.State = filepath.Clean(query.Get("state"))
 	}
 
 	if params.Repository == "" {

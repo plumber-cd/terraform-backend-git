@@ -34,6 +34,11 @@ func Start() {
 
 	address := viper.GetString("address")
 	log.Println("listen on", address)
+	log.Printf("Repo: %s", viper.GetString("git.repository"))
+	log.Printf("Ref: %s", viper.GetString("git.ref"))
+	log.Printf("State: %s", viper.GetString("git.state"))
+	log.Printf("Backend: %s", viper.GetString("backend"))
+
 	log.Fatal(http.ListenAndServe(address, mux))
 }
 

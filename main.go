@@ -114,21 +114,26 @@ func main() {
 	rootCmd.PersistentFlags().StringP("address", "a", "127.0.0.1:6061", "Specify the listen address")
 	viper.BindPFlag("address", rootCmd.PersistentFlags().Lookup("address"))
 	viper.SetDefault("address", "127.0.0.1:6061")
+
 	rootCmd.PersistentFlags().BoolP("access-logs", "l", false, "Log HTTP requests to the console")
 	viper.BindPFlag("accessLogs", rootCmd.PersistentFlags().Lookup("access-logs"))
 	viper.SetDefault("accessLogs", false)
 
-	rootCmd.AddCommand(stopCmd)
+	rootCmd.PersistentFlags().String("repository", "", "Repository to use as storage")
+	viper.BindPFlag("git.repository", rootCmd.PersistentFlags().Lookup("repository"))
 
-	gitBackendCmd.PersistentFlags().StringP("repository", "r", "", "Repository to use as storage")
-	viper.BindPFlag("git.repository", gitBackendCmd.PersistentFlags().Lookup("repository"))
-
-	gitBackendCmd.PersistentFlags().StringP("ref", "b", "master", "Ref (branch) to use")
-	viper.BindPFlag("git.ref", gitBackendCmd.PersistentFlags().Lookup("ref"))
+	rootCmd.PersistentFlags().String("ref", "master", "Ref (branch) to use")
+	viper.BindPFlag("git.ref", rootCmd.PersistentFlags().Lookup("ref"))
 	viper.SetDefault("git.ref", "master")
 
-	gitBackendCmd.PersistentFlags().StringP("state", "s", "", "Ref (branch) to use")
-	viper.BindPFlag("git.state", gitBackendCmd.PersistentFlags().Lookup("state"))
+	rootCmd.PersistentFlags().String("backend", "git", "Ref (branch) to use")
+	viper.BindPFlag("backend", rootCmd.PersistentFlags().Lookup("backend"))
+	viper.SetDefault("backend", "git")
+
+	rootCmd.PersistentFlags().StringP("state", "s", "", "Ref (branch) to use")
+	viper.BindPFlag("git.state", rootCmd.PersistentFlags().Lookup("state"))
+
+	rootCmd.AddCommand(stopCmd)
 
 	terraformWrapperCmd.Flags().StringP("tf", "t", "terraform", "Path to terraform binary")
 	viper.BindPFlag("wrapper.tf.bin", terraformWrapperCmd.Flags().Lookup("tf"))
