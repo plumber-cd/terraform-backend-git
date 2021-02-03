@@ -133,7 +133,7 @@ This is so we could have more Storage Types supported in the future as well as m
 ### Configuration
 
 CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend config | Description
---- | --- | --- | ---
+--- | --- | --- | --- | ---
 `--repository` | `git.repository` | `TF_BACKEND_GIT_GIT_REPOSITORY` |`repository` | Required; Which repository to use for storing TF state?
 `--ref` | `git.ref` | `TF_BACKEND_GIT_GIT_REF` |`ref` | Optional; Which branch to use in that `repository`? Default: `master`.
 `--state` | `git.state` | `TF_BACKEND_GIT_GIT_STATE` | `state` | Required; Path to the state file in that `repository`.
