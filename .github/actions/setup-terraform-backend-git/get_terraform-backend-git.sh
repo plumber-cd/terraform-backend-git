@@ -13,7 +13,7 @@ fi
 
 mkdir terraform-backend-git
 TARGET_FILE="terraform-backend-git"
-curl -LJ -o terraform-backend-git/$TARGET_FILE 'https://github.com/plumber-cd/terraform-backend-git/releases/download/'"$INPUT_VERSION"'/terraform-backend-git-darwin-386'
+curl -LJ -o terraform-backend-git/$TARGET_FILE 'https://github.com/plumber-cd/terraform-backend-git/releases/download/'"$INPUT_VERSION"'/terraform-backend-git-darwin-amd64'
 chmod +x terraform-backend-git/$TARGET_FILE
 echo "terraform-backend-git" >> $GITHUB_PATH
 echo "::set-output name=version::$INPUT_VERSION"
