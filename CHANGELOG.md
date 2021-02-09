@@ -6,11 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.15] - 2021-02-08
+## [0.0.16] - 2021-02-08
 
 ### Added
 
 - GitHub Action (Authored-by: [@mambax](https://github.com/mambax))
+
+### Fixed
+
+- GitHub deprecated `set-env`; replaced with https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files
 
 ## [0.0.14] - 2020-05-30
 
