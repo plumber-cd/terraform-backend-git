@@ -15,7 +15,7 @@ jobs:
         arch: [amd64, 386]
     steps:
       - name: Set RELEASE_VERSION
-        run: echo ::set-env name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Setup Go
         uses: actions/setup-go@v1
         with:
@@ -25,7 +25,7 @@ jobs:
       - name: Add Windows Exe File Extension
         if: matrix.os == 'windows'
         run: |
-          echo ::set-env name=FILE_EXTENSION::.exe
+          echo "FILE_EXTENSION=.exe" >> $GITHUB_ENV
       - name: Build Code
         env:
           GOOS: ${{ matrix.os }}
@@ -52,7 +52,7 @@ jobs:
           cd terraform-backend-git && sha256sum * > SHA256SUMS
       - name: List Artifacts
         run: |
-          echo ::set-env name=ARTIFACTS::$(echo terraform-backend-git/*)
+          echo "ARTIFACTS=$(echo terraform-backend-git/*)" >> $GITHUB_ENV
       - name: Release
         uses: docker://antonyurchenko/git-release:v3
         env:
