@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.15] - 2021-02-08
+
+### Added
+
+- GitHub Action (Authored-by: [@mambax](https://github.com/mambax))
+
 ## [0.0.14] - 2020-05-30
 
 ### Added
