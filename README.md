@@ -12,6 +12,10 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
       - [From Release](#from-release)
       - [From Sources](#from-sources)
     - [Usage](#usage)
+      - [As wrapper](#as-wrapper)
+      - [with Hashicorp Configuration Language (HCL)](#with-hashicorp-configuration-language-(hcl))
+      - [as Terraform HTTP backend](#as-terraform-http-backend)
+      - [As Github Action](#as-github-action)
     - [Wrappers CLI](#wrappers-cli)
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
@@ -53,8 +57,9 @@ go build github.com/plumber-cd/terraform-backend-git@${version}
 Don't forget to add it to your `PATH`.
 
 ### Usage
-
-Assuming you've installed Terraform and this backend, you should be good to Go:
+The different use cases can be combined at will but need some fine-tuning to not have redundant definitions. The most straight-forward approach is the `wrapper` solution below.
+#### As wrapper
+Assuming you've installed Terraform and this backend (also added to the PATH), you should be good to go:
 
 ```bash
 terraform-backend-git git \
@@ -65,6 +70,10 @@ terraform-backend-git git \
 ```
 
 Your current working directory should be where you want to run `terraform` (your module). `terraform-backend-git` will act as a wrapper - it will start a backend, generate HTTP backend configuration pointing to that backend instance (it'll be an `*.auto.tf` file) and then call terraform accordingly to your input. After done it will cleanup any `*.auto.tf` it created. You shouldn't be having any other backend configurations in your TF code, otherwise it will fail with conflict.
+
+This technique is better explained in the [wrapper CLI](#wrappers-cli) section.
+
+#### with Hashicorp Configuration Language (HCL)
 
 You could also use `terraform-backend-git.hcl` config file and put it in the same directory, that would allow you to store configuration in Git along with your module:
 
@@ -77,6 +86,10 @@ git.state = "my/state.json"
 You can specify custom path to `hcl` config file using `--config` arg.
 
 You can have a mixed setup, where some parts of configuration comes from `terraform-backend-git.hcl` and some from CLI arguments.
+
+#### as Terraform HTTP backend
+
+Learn what is a [HTTP backend](https://www.terraform.io/docs/language/settings/backends/http.html).
 
 Alternatively, you could have more control over the process (for instance if you are using something like `terragrunt`). For that, you'll need to start `terraform-backend-git` in a background and configure your Terraform to point to it. In this scenario, all configuration for the backend will be coming from Terraform in a form of HTTP parameters.
 
@@ -111,6 +124,46 @@ When you're done, you'll want to stop the backend. It uses `pid` files, so you c
 ```bash
 terraform-backend-git stop
 ```
+
+#### As Github Action
+##### Setup action
+
+This action downloads a version of [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) and adds it to the path. It makes the [wrapper CLI](terraform-backend-git#wrappers-cli) ready to use in following steps of the same job.
+
+##### Inputs
+
+###### `version`
+
+The release version to fetch. This has to be in the form `<tag_name>`.
+
+##### Outputs
+
+###### `version`
+
+The version number of the release tag.
+
+##### Example usage
+
+```yaml
+uses: plumber-cd/terraform-backend-git@master
+with:
+  version: "v0.0.14"
+```
+
+Example inside a job:
+
+```yaml
+steps:
+  - uses: actions/checkout@v2
+  - name: Setup terraform-backend-git
+    uses: plumber-cd/terraform-backend-git@master
+    with:
+      version: v0.0.14
+
+  - name: Use command
+    run: terraform-backend-git version
+```
+
 
 ### Wrappers CLI
 

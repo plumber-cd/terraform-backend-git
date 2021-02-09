@@ -1,0 +1,22 @@
+name: 'Install terraform-backend-git'
+description: 'Download a specific terraform-backend-git version'
+
+inputs:
+  version:
+    description: 'version of terraform-backend-git'
+    required: true
+    default: 'latest'
+
+runs:
+  using: 'docker'
+  image: './Dockerfile'
+  args:
+    - ${{ inputs.version }}
+
+outputs:
+  version:
+    description: 'Version of terraform-backend-git installed'
+
+branding:
+  icon: 'download-cloud'
+  color: 'gray-dark'
