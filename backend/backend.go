@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/plumber-cd/terraform-backend-git/types"
+	"github.com/spf13/viper"
 )
 
 // KnownStorageTypes map storage types to storage clients before starting the server so backend knows what's supported
@@ -16,10 +17,16 @@ var KnownStorageTypes = make(map[string]types.StorageClient)
 
 // ParseMetadata look into the request and read metadata
 func ParseMetadata(request *http.Request) (*types.RequestMetadata, error) {
+
 	metadata := &types.RequestMetadata{
-		ID:   request.URL.Query().Get("ID"),
-		Type: request.URL.Query().Get("type"),
+		Type: viper.GetString("backend"),
 	}
+
+	if request.URL.Query().Get("type") != "" {
+		metadata.Type = request.URL.Query().Get("type")
+	}
+
+	metadata.ID = request.URL.Query().Get("ID")
 
 	if metadata.Type == "" {
 		return nil, errors.New("Storage type was not specified")
