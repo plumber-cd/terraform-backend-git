@@ -4,8 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/hashicorp/terraform/states/statemgr"
+	"time"
 )
 
 // ErrLocked indicates the state was already locked by someone else
@@ -30,7 +29,32 @@ var (
 )
 
 // LockInfo represents a TF Lock Metadata.
-type LockInfo statemgr.LockInfo
+// See https://github.com/hashicorp/terraform/blob/v1.1.3/internal/states/statemgr/locker.go#L115-L138.
+// Thanks HashiCorp for using "internal" package :facepalm:.
+type LockInfo struct {
+	// Unique ID for the lock. NewLockInfo provides a random ID, but this may
+	// be overridden by the lock implementation. The final value of ID will be
+	// returned by the call to Lock.
+	ID string
+
+	// Terraform operation, provided by the caller.
+	Operation string
+
+	// Extra information to store with the lock, provided by the caller.
+	Info string
+
+	// user@hostname when available
+	Who string
+
+	// Terraform version
+	Version string
+
+	// Time that the lock was taken.
+	Created time.Time
+
+	// Path to the state file when applicable. Set by the Lock implementation.
+	Path string
+}
 
 // RequestMetadataParams is a specific params set for a particular backend.
 type RequestMetadataParams interface {
