@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated dependencies, fixed CVE-2020-16845
 - Updated to use Go 1.17, and Ubuntu 20.04 builder
 - Updated Alpine 3.15
+- Build `arm64` version of binaries for Mac and Linux; stop building `386` for Mac
 
 ## [0.0.16] - 2021-02-08
 

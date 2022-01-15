@@ -12,7 +12,12 @@ jobs:
     strategy:
       matrix:
         os: [linux, darwin, windows]
-        arch: [amd64, 386]
+        arch: [amd64, 386, arm64]
+        exclude:
+          - os: darwin
+            arch: 386
+          - os: windows
+            arch: arm64
     steps:
       - name: Set RELEASE_VERSION
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
