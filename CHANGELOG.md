@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.17] - 2022-01-15
+
+### Changed
+
+- Use cross-platform detection for SSH-agent, now supports Pageant on Windows #21 (Authored-by: [@blaubaer](https://github.com/blaubaer))
+
 ## [0.0.16] - 2021-02-08
 
 ### Added
