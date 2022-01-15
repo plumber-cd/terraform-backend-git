@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"errors"
+	sshagent "github.com/xanzy/ssh-agent"
 	"io"
 	"io/ioutil"
 	"os"
@@ -45,10 +46,12 @@ func authBasicHTTP() (*http.BasicAuth, error) {
 	}, nil
 }
 
-// authSSHAgent discovers environment for SSH_AUTH_SOCK and builds NewSSHAgentAuth
+// authSSHAgent discovers environment for SSH_AUTH_SOCK (or other platform dependent logic)
+// and builds NewSSHAgentAuth.
+//
 // If returned null - no agent was set up
 func authSSHAgent(params *RequestMetadataParams) (*sshGit.PublicKeysCallback, error) {
-	if _, ok := os.LookupEnv("SSH_AUTH_SOCK"); !ok {
+	if !sshagent.Available() {
 		return nil, nil
 	}
 
