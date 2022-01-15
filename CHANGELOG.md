@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Use cross-platform detection for SSH-agent, now supports Pageant on Windows #21 (Authored-by: [@blaubaer](https://github.com/blaubaer))
+- Use cross-platform detection for SSH-agent, now supports Pageant on Windows [#21](https://github.com/plumber-cd/terraform-backend-git/pull/21) (Authored-by: [@blaubaer](https://github.com/blaubaer))
+- Updated dependencies, fixed CVE-2020-16845
+- Updated to use Go 1.17, and Ubuntu 20.04 builder
+- Updated Alpine 3.15
 
 ## [0.0.16] - 2021-02-08
 
