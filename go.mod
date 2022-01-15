@@ -10,6 +10,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.4.0
+	github.com/xanzy/ssh-agent v0.2.1
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
 	golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa
 )
