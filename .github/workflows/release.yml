@@ -24,7 +24,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v1
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Add Windows Exe File Extension
@@ -59,14 +59,13 @@ jobs:
         run: |
           echo "ARTIFACTS=$(echo terraform-backend-git/*)" >> $GITHUB_ENV
       - name: Release
-        uses: docker://antonyurchenko/git-release:v3
+        uses: docker://antonyurchenko/git-release:v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRAFT_RELEASE: "true"
           PRE_RELEASE: "false"
           CHANGELOG_FILE: "CHANGELOG.md"
           ALLOW_EMPTY_CHANGELOG: "false"
-          ALLOW_TAG_PREFIX: "true"
         with:
           args: |
               ${{ env.ARTIFACTS }}
