@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.18] - 2022-04-30
+
+### Changed
+
+- Updated Go to 1.18 and all dependencies
+
+### Fixed
+
+- `ERROR: You're using an RSA key with SHA-1, which is no longer allowed. Please use a newer client or a different key type.`
+
 ## [0.0.17] - 2022-01-15
 
 ### Changed
