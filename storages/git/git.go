@@ -3,7 +3,6 @@ package git
 import (
 	"bytes"
 	"errors"
-	sshagent "github.com/xanzy/ssh-agent"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	sshagent "github.com/xanzy/ssh-agent"
 
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
@@ -22,7 +23,13 @@ import (
 	sshGit "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/plumber-cd/terraform-backend-git/backend"
 )
+
+func init() {
+	backend.KnownStorageTypes["git"] = NewStorageClient()
+}
 
 // authHTTP discovers environment for HTTP credentials
 func authBasicHTTP() (*http.BasicAuth, error) {

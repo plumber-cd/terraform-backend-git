@@ -1,4 +1,7 @@
-package main
+//go:build windows
+// +build windows
+
+package pid
 
 import (
 	"fmt"

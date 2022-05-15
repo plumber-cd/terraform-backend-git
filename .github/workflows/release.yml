@@ -8,7 +8,7 @@ name: Create Release
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [linux, darwin, windows]
@@ -22,11 +22,11 @@ jobs:
       - name: Set RELEASE_VERSION
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: '1.18'
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Add Windows Exe File Extension
         if: matrix.os == 'windows'
         run: |
@@ -35,9 +35,9 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -ldflags="-X 'main.Version=${{ env.RELEASE_VERSION }}'" -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
+        run: go build -ldflags="-X 'github.com/plumber-cd/terraform-backend-git/cmd.Version=${{ env.RELEASE_VERSION }}'" -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
       - name: Upload Artifact
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: terraform-backend-git
           path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
@@ -47,11 +47,12 @@ jobs:
     needs: build
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Download Artifacts
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v3
         with:
           name: terraform-backend-git
+          path: terraform-backend-git
       - name: Generate SHA256SUMS
         run: |
           cd terraform-backend-git && sha256sum * > SHA256SUMS
