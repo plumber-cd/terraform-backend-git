@@ -12,9 +12,9 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
       - [From Release](#from-release)
       - [From Sources](#from-sources)
     - [Usage](#usage)
-      - [As wrapper](#as-wrapper)
-      - [with Hashicorp Configuration Language (HCL)](#with-hashicorp-configuration-language-hcl)
-      - [as Terraform HTTP backend](#as-terraform-http-backend)
+      - [Wrapper Mode](#wrapper-mode)
+      - [Hashicorp Configuration Language (HCL) Mode](#hashicorp-configuration-language-hcl-mode)
+      - [Standalone Terraform HTTP Backend Mode](#standalone-terraform-http-backend-mode)
       - [As Github Action](#as-github-action)
         - [Setup action](#setup-action)
         - [Inputs](#inputs)
@@ -26,6 +26,11 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
     - [State Encryption](#state-encryption)
+      - [`sops`](#sops)
+        - [PGP](#pgp)
+        - [AWS KMS](#aws-kms)
+        - [Hashicorp Vault](#hashicorp-vault)
+      - [AES256](#aes256)
     - [Running backend remotely](#running-backend-remotely)
     - [TLS](#tls)
     - [Basic HTTP Authentication](#basic-http-authentication)
@@ -33,11 +38,11 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
   - [Why storing state in Git](#why-storing-state-in-git)
   - [Proposed solution](#proposed-solution)
     - [Lock](#lock)
-    - [CheckLock](#checklock)
-    - [UnLock](#unlock)
-    - [GetState](#getstate)
-    - [UpdateState](#updatestate)
-    - [DeleteState](#deletestate)
+    - [Check existing Lock](#check-existing-lock)
+    - [Unlock](#unlock)
+    - [Get state](#get-state)
+    - [Update state](#update-state)
+    - [Delete state](#delete-state)
 
 ## Getting Started
 
@@ -58,67 +63,68 @@ Don't forget to add it to your `PATH`.
 You can build it yourself, of course (and Go made it really easy):
 
 ```bash
-go build github.com/plumber-cd/terraform-backend-git@${version}
+go install github.com/plumber-cd/terraform-backend-git@${version}
 ```
 
 Don't forget to add it to your `PATH`.
 
 ### Usage
-The different use cases can be combined at will but need some fine-tuning to not have redundant definitions. The most straight-forward approach is the `wrapper` solution below.
-#### As wrapper
-Assuming you've installed Terraform and this backend (also added to the PATH), you should be good to go:
+
+The most easy to understand option is the `wrapper` mode.
+
+#### Wrapper Mode
+
+Assuming you've installed Terraform as well as this backend (and added it to your `PATH`), you can do this:
 
 ```bash
 terraform-backend-git git \
-  --repository git@github.com:my-org/tf-state.git \
+  --repository https://github.com/my-org/tf-state \
   --ref master \
   --state my/state.json \
     terraform [any tf args] init|plan|apply [more tf args]
 ```
 
-Your current working directory should be where you want to run `terraform` (your module). `terraform-backend-git` will act as a wrapper - it will start a backend, generate HTTP backend configuration pointing to that backend instance (it'll be an `*.auto.tf` file) and then call terraform accordingly to your input. After done it will cleanup any `*.auto.tf` it created. You shouldn't be having any other backend configurations in your TF code, otherwise it will fail with conflict.
+`terraform-backend-git` will act as a wrapper. It will start HTTP backend, generate Terraform configuration for it and save it to a `*.auto.tf` file. And then - it will just execute as-is everything you gave it to the right from `terraform` subcommand. After `terraform` exits - it will cleanup any `*.auto.tf` it created and shut down HTTP listener. You shouldn't be having any other backend configurations in your TF code, otherwise Terraform will fail with a conflict.
 
-This technique is better explained in the [wrapper CLI](#wrappers-cli) section.
+This mode is explained in more depth in the [wrapper CLI](#wrappers-cli) section.
 
-#### with Hashicorp Configuration Language (HCL)
+#### Hashicorp Configuration Language (HCL) Mode
 
-You could also use `terraform-backend-git.hcl` config file and put it in the same directory, that would allow you to store configuration in Git along with your module:
+You could also create a `terraform-backend-git.hcl` config file and put it next to your `*.tf` code:
 
 ```hcl
-git.repository = "git@github.com:my-org/tf-state.git"
-git.ref = "master"
+git.repository = "https://github.com/my-org/tf-state"
+git.ref = "main"
 git.state = "my/state.json"
 ```
 
-You can specify custom path to `hcl` config file using `--config` arg.
+You can also specify custom path to the `hcl` config file using `--config` arg.
 
-You can have a mixed setup, where some parts of configuration comes from `terraform-backend-git.hcl` and some from CLI arguments.
+You can also have a mixed setup, where some parts of configuration comes from `terraform-backend-git.hcl` and some - from CLI arguments or even environment variables (see details below).
 
-#### as Terraform HTTP backend
+#### Standalone Terraform HTTP Backend Mode
 
-Learn what is a [HTTP backend](https://www.terraform.io/docs/language/settings/backends/http.html).
+Basically, you can run this backend as a standalone server (locally or remotely) as a daemon. You can either run it permanently, or have it started in your pipeline right before it is about to perform some Terraform actions.
 
-Alternatively, you could have more control over the process (for instance if you are using something like `terragrunt`). For that, you'll need to start `terraform-backend-git` in a background and configure your Terraform to point to it. In this scenario, all configuration for the backend will be coming from Terraform in a form of HTTP parameters.
+```bash
+terraform-backend-git &
+```
+
+Then, you just configure your Terraform code to use an [HTTP backend](https://www.terraform.io/docs/language/settings/backends/http.html).
 
 Your Terraform backend configuration should be looking something like this:
 
 ```terraform
 terraform {
   backend "http" {
-    address = "http://localhost:6061/?type=git&repository=git@github.com:my-org/tf-state.git&ref=master&state=my/state.json"
-    lock_address = "http://localhost:6061/?type=git&repository=git@github.com:my-org/tf-state.git&ref=master&state=my/state.json"
-    unlock_address = "http://localhost:6061/?type=git&repository=git@github.com:my-org/tf-state.git&ref=master&state=my/state.json"
+    address = "http://localhost:6061/?type=git&repository=https://github.com/my-org/tf-state&ref=master&state=my/state.json"
+    lock_address = "http://localhost:6061/?type=git&repository=https://github.com/my-org/tf-state&ref=master&state=my/state.json"
+    unlock_address = "http://localhost:6061/?type=git&repository=https://github.com/my-org/tf-state&ref=master&state=my/state.json"
   }
 }
 ```
 
-Note that `lock_address` and `unlock_address` should be explicitly defined (both of them), otherwise Terraform will not make any locking or unlocking calls and assume that backend does not support locking and unlocking (how would locking be supported without unlocking?...).
-
-Once you have your Terraform configured, you can start the backend in the background:
-
-```bash
-terraform-backend-git &
-```
+Note that `lock_address` and `unlock_address` should both be explicitly defined. If they are not defined - Terraform assumes that the backend implementation does not support locking, so it will never attempt to lock the state, which might be dangerous and might lead to state file corruptions.
 
 Now, just run Terraform and it will use the backend:
 
@@ -126,16 +132,17 @@ Now, just run Terraform and it will use the backend:
 terraform init|plan|apply
 ```
 
-When you're done, you'll want to stop the backend. It uses `pid` files, so you could stop it like this:
+When you're done, and if you want to stop the backend - it uses `pid` files to make it easier to stop:
 
 ```bash
 terraform-backend-git stop
 ```
 
 #### As Github Action
+
 ##### Setup action
 
-This action downloads a version of [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) and adds it to the path. It makes the [wrapper CLI](terraform-backend-git#wrappers-cli) ready to use in following steps of the same job.
+This action downloads a version of [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) and adds it to the path. It makes the [wrapper CLI](terraform-backend-git#wrappers-cli) ready to use in the following steps of the same job.
 
 ##### Inputs
 
@@ -166,29 +173,34 @@ steps:
     uses: plumber-cd/terraform-backend-git@master
     with:
       version: v0.0.14
-
   - name: Use command
     run: terraform-backend-git version
 ```
 
-
 ### Wrappers CLI
 
-Command line format goes like this:
+Command line syntax goes like this:
 
 ```bash
-terraform-backend-git [any backend options] <storage type> [any storage options] <wrapper> [any sub-process arguments]
+terraform-backend-git [backend options] <storage type> [storage options] <program> [any sub-process arguments]
 ```
 
 For instance:
 
 ```bash
 terraform-backend-git --access-logs git --state my/state.json terraform -detailed-exitcode -out=plan.out
+#                                    |                            |
+#                                    |                            \--- This is the program to run when HTTP backend is ready.
+#                                    |                                 Everything to the right are as-is arguments to that program.
+#                                    |
+#                                    \-------------------- This is the name of the storage type to use.
+#                                                          To the right are the arguments to control that storage settings.
+#                                                          To the left are the arguments to control global backend settings.
 ```
 
-In this case, `--access-logs` was a global argument to the backend, `git` was a specific Storage Type and `--state` was an argument for it, and `terraform` was a wrapper name that will start `terraform` as a sub-process and any arguments to the wrapper will be passed to the sub-process as-is.
+Initially it is meant to only support `git` as a storage, hence the name of it included `git`. But later on it was realized that a pluggable architecture would allow to create alternative storage implementations re-using same protocol, encryption and so on. So tat's why it feels like a duplication of `git`, maybe in the future we will just rename the project to a `terraform-http-backend`.
 
-This is so we could have more Storage Types supported in the future as well as more wrappers to use with them (like `terragrunt` or `terratest`). Storage Type implementation would define how to store state, and Wrapper implementation defines how to run a sub-process (in `terraform` case we generate `*.auto.tf` files to define HTTP backend configuration).
+`terraform` is also there because in the future we may extend support to other tools such as (but not limited to) `terragrunt` and `terratest`.
 
 ### Configuration
 
@@ -203,7 +215,7 @@ CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend confi
 
 ### Git Credentials
 
-Both HTTP and SSH protocols are supported for Git. As of now, any sensitive type of configuration only supported via environment variables.
+Both HTTP and SSH protocols are supported. As of now, any sensitive configuration is only supported via environment variables.
 
 Variable | Description
 --- | ---
@@ -213,37 +225,55 @@ Variable | Description
 `SSH_PRIVATE_KEY` | Path to SSH key for Git access.
 `StrictHostKeyChecking` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
 
-Backend will determine which protocol you are using based on `repository` URL.
+Backend will determine which protocol you are using based on the `repository` URL.
 
 For SSH, it will see if `ssh-agent` is running by looking into `SSH_AUTH_SOCK` variable, and if not - it will need a private key. It will try to use `~/.ssh/id_rsa` unless you explicitly specify a different path via `SSH_PRIVATE_KEY`.
 
-Unfortunately `go-git` will not mimic real Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach.
+Unfortunately `go-git` will not mimic real Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach. It is recommended to use Git Credentials Helpers (aka `ASKPASS`).
 
 ### State Encryption
+
+We are using [`sops`](https://github.com/mozilla/sops) as encryption abstraction. `sops` supports many different encryption backends, but unfortunately it does not provide one stop API for all of them, so on our side we should define configuration and create binding for each. At the moment, we have following bindings for `sops` backends:
+
+- PGP
+- AWS KMS
+- Hashicorp Vault
+
+Before we integrated with `sops` - we had a basic AES256 encryption via static passphrase. It is no longer recommended, although might be useful in some limited scenarios. Basic AES256 encryption is using one shared key, and it encrypts entire JSON state file that it can no longer be read as JSON. `sops` supports various encryption-as-service providers such as AWS KMS and Hashicorp Vault Transit - meaning encryption can be safely performed without revealing private key to the encryption clients. That means keys can be easily rotated, access can be easily revoked and generally it dramatically reduces chances of the key leaks.
+
+#### `sops`
+
+`sops` supports [Shamir's Secret Sharing](https://github.com/mozilla/sops#214key-groups). You can configure multiple backends at once - each will be used to encrypt a part of the key. You can set `TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD` if you want to use a specific threshold - by default, all keys used for encryption will be required for decryption.
+
+##### PGP
+
+Use `TF_BACKEND_HTTP_SOPS_PGP_FP` to provide a comma separated PGP key fingerprints. Keys must be added to a local `gpg` in order to encrypt. Private part of the key must be present in order for decrypt.
+
+##### AWS KMS
+
+Use `TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS` to provide a comma separated list of KMS ARNs. AWS SDK will use standard [credentials provider chain](https://docs.aws.amazon.com/sdk-for-go/api/aws/credentials/) in order to automatically discover local credentials in standard `AWS_*` environment variables or `~/.aws`. You can optionally use `TF_BACKEND_HTTP_SOPS_AWS_PROFILE` to point it to a specific shared profile. You can also provide additional KMS encryption context using `TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT` - it is a comma separated list of `key=value` pairs.
+
+##### Hashicorp Vault
+
+Use `TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS` to point it to the Vault Transit keys. It is a comma separated list of URLs in a form of `${VAULT_ADDR}/v1/transit/keys/key`, where `transit` is a name of Vault Transit mount and `key` is the name of the key in that mount. Under the hood Vault SDK is using standard credentials resolver to automatically discover Vault credentials in the environment, meaning you can either use `vault login` or set `VAULT_TOKEN` environment variable.
+
+#### AES256
 
 To enable state encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` environment variable to set a passphrase. Backend will encrypt and decrypt (using AES256, server-side) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption for HTTP backend. Traffic between Terraform and this backend stays unencrypted at all times.
 
 ### Running backend remotely
 
-First of all, **DON'T DO IT**.
+This can be done, as previously mentioned, but it is not recommended. Although latest versions of this backend do support TLS in-transit encryption as well as at-rest encryption via `sops` - it still doesn't support authentication beyond very basic HTTP auth with a single shared password. Exposed backend will not give much flexibility in terms of the user access control, so it isn't really secure.
 
-It can be done, but again - **DON'T DO IT**.
+It is hard to tell at the moment where feature requests from users and my own use cases will take this project next, bur originally it was designed to be a local-only thing. Once backends in Terraform [can be pluggable gRPC components](https://github.com/hashicorp/terraform/issues/5877), this backend was planned to be converted to a normal gRPC plugin and HTTP support was planned to be removed. Basically, the idea was to use HTTP until gRCP for backend implementations were not available.
 
-First of all, by default, Terraform does not perform any encryption before sending the state to HTTP backend. Also, running remotely accessible backend like this without authentication would **not** be secure - **anyone who can make HTTP calls to it would be able to get, update or delete your state files**.
+You may probably get creative and use something like Istio or maybe Keycloack to add external layer of encryption, authentication and authorization.
 
-But even then, this backend is not aiming to become a standalone project. Once backends in Terraform [can be pluggable gRPC components](https://github.com/hashicorp/terraform/issues/5877), this backend will be converted to a normal TF gRPC plugin, HTTP support will be removed, and binaries will not be distributed separately anymore (I believe TF will be able to fetch them automatically just like it does it for providers right now). Until that happens, basically HTTP protocol is used instead of gRPC, and downloading and running this backend is delegated to the user. Therefore this backend recommended to be used in plugin/wrapper notion, i.e. you start it just before running Terraform and then you stop it right after Terraform is finished, and it happens on the same host. The `wrapper` mode makes that very scenario even easier, it run Terraform for you so you don't have to maintain multiple console windows. At the end of the day, you are not running Terraform AWS Provider remotely, are you?
-
-Even though the traffic can be secured with HTTP TLS encryption ([WIP](https://github.com/plumber-cd/terraform-backend-git/issues/12)), and [Basic HTTP Authentication](#basic-http-authentication) can be added, authentication and encryption is there just for the sake of securing local traffic, and even when it's enabled - remote operations mode is not recommended.
-
-Therefore it will not be considered to implement any rich HTTP-related features such as AD/Okta HTTP authentication, or any other features that will move this project further away from the goal to become a gRPC plugin.
-
-Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interception or spoofing (or even having a bad actor who already got the access to the host to send HTTP requests directly to the endpoint), so consider enabling Basic HTTP Authentication and TLS encryption.
-
-You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add external layer of encryption and authentication, and then at your discretion you may run it with `--address=:6061` argument so the backend will bind to `0.0.0.0` and become remotely accessible.
+If you are absolutely sure you want to run this backend in remote standalone mode - you need to run it with `--address=:6061` argument so the backend will bind to `0.0.0.0` and become remotely accessible, otherwise - it will only listen on `127.0.0.1`.
 
 ### TLS
 
-You can set `TF_BACKEND_GIT_HTTPS_CERT` and `TF_BACKEND_GIT_HTTPS_KEY` pointing to your cert and a key files. This will make HTTP backend to start in TLS mode. If you are using self-signed certificate - you can also set `TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION=true` and that will enable `skip_cert_verification` in terraform config.
+You can set `TF_BACKEND_GIT_HTTPS_CERT` and `TF_BACKEND_GIT_HTTPS_KEY` pointing to your cert and a key files. This will make HTTP backend to start in TLS mode. If you are using self-signed certificate - you can also set `TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION=true` in a wrapper mode and that will enable `skip_cert_verification` in the terraform config (or configure it yourself for standalone mode).
 
 ### Basic HTTP Authentication
 
@@ -259,63 +289,67 @@ terraform {
 }
 ```
 
-Note that if either username or password changes, Terraform will consider this as a backend configuration change and will want to ask you to migrate state. Since backend will not be accepting old credentials anymore - it will fail to `init` (can't read the "old" state). Consider deleting your local `.terraform/terraform.tfstate` file to fix this.
+Note that if either username or password changes - Terraform will consider this as a backend configuration change and will want to ask you to migrate the state. Since backend will not be accepting old credentials anymore - it will fail to `init` (can't read the "old" state). Consider running `init -reconfigure` or deleting your local `.terraform/terraform.tfstate` file to fix this issue.
 
 ### Why not native Terraform Backend
 
 Unfortunately, Terraform Backends is not pluggable like Providers are, see https://github.com/hashicorp/terraform/issues/5877.
 
-Due to this, I couldn't make a proper native Terraform backend implementation for Git on a side, it should be implemented and added to https://github.com/hashicorp/terraform code base. There is an open ticket to do it https://github.com/hashicorp/terraform/issues/24603, but it is unclear when this would happen ([if it will at all](https://github.com/hashicorp/terraform/issues/24603#issuecomment-613533258)). That said I figured this HTTP backend implementation might be useful for now.
+Due to this, I couldn't make a proper native Terraform backend implementation for Git, it should have been implemented and added to https://github.com/hashicorp/terraform code base. There is an open ticket to do it https://github.com/hashicorp/terraform/issues/24603, but it is unclear when this would happen ([if it will at all](https://github.com/hashicorp/terraform/issues/24603#issuecomment-613533258)). That said I figured this HTTP backend implementation might be useful for the time being.
 
 ## Why storing state in Git
 
-So you must be wondering why storing Terraform state in Git might be such a good idea.
+So you must be wondering why is that I think storing Terraform state in Git might be such a wonderful idea.
 
-I often face the same chicken-egg issue, again and again and again... as I tend to manage ALL my infrastructure with Code (and usually it's Terraform), among the supported backend types none would exist before I create it. With code. Feel the problem?
+There is one particular chicken-egg problem that I ran into again, and again, and again. As I tend to manage ALL my infrastructure with code (and usually it's Terraform) - among the supported backend types none would exist before I create it. With code. Starting to feel the problem?
 
-Backend types that uses managed object storages (like `s3`) having the least amount of dependencies (i.e. no VPC and etc), so I usually was leaning towards using them, but even then the chicken-egg issue is still there. Usually I'm having some generic TF modules for my `s3` and `dynamodb` implementations, that I use then as dependencies to my top-level root module that ultimately defines and manages my TF state backend. And I would usually apply it for a first time (bootstrapping) using a local state file, and then manually push that state to newly created backend. To make it fully automated, which is totally doable, it would require some amount of custom glue... and would cause complications for destroy/recreate type of operations. Applying (specifically, bootstrapping) this specific piece of infrastructure would require some custom logic specific to only that piece of infrastructure, and that logic cannot be packaged as a Terraform module. So, TL;DR: the problem is kinda still there, I just kinda learned how to live with it. Sounds familiar? Keep reading.
+Backend types that use managed object storages (like `s3`) having the least amount of dependencies (i.e. they require no VPC), so before creating this backend - that's what I was usually using. But even then the chicken-egg issue is still there - you'd need a bucket itself, probably some replication config, encryption, IAM... And then there's also DynamoDB for locking. Usually I'd express that in TF code and just apply it locally for the first time (bootstrap). And then I will manually push that state to newly created bucket. What if I want to automate AWS account creation with Terraform too? To make it fully automated, which is totally doable, it would require some amount of custom glue... And that glue cannot be packaged as a Terraform module.
 
-To throw more shit on the fan, I also use Terraform to manage my Git repositories (with GitHub or Bitbucket provider). It's an infrastructure too, after all. With proper structure and abstractions Terraform code alone may easily be over 50 repositories for even smallest projects, and managing repositories should not be a burden. I want every single repository to be unified and configured same way, i.e. access/protected branches/merging policies/etc. And often when I start a project, I don't have any infrastructure for it yet, I don't even have an AWS account or whatever yet, I just want to create a few initial repositories to start working on it. And then my choice as to the state management usually limited to a local state and committing that state to git. It's fine when I'm alone, but as soon as multiple people involved it gets complicated (things like manually "locking" the state via chat, fancy PR merging rules, and etc). And remember we don't even have any infra yet, so forget about CD and pipelines for now.
+And then what if I want to go multi-cloud? Well, then I either store my GCP and Azure state in AWS, or I use 3 different state storages. Which would complicate my pipelines and make things less portable overall.
 
-Of course there's Terraform Cloud/Enterprise addressing specifically that issue. A great product which I absolutely love, but honestly for a small projects, that doesn't need (yet?) any of that complex logic and fancy pipelines, just remote state management with locking - sounds like an expensive overhead. Besides at the beginning of a new project, maybe even a PoC that doesn't even guaranteed to stay for a long time, maybe even a PoC to prove Terraform is a right tool so no one really yet sold on the idea to buy anything for it, do you really think the very first and right thing to do should be to go through procurement and legal processes to get a contract signed with a 3rd party? Sounds like an obstacle and a yak shaving to me. Migrating Terraform state is a piece of cake so we can take care of that much later, when we need it.
+To throw even more shit on the fan - I also use Terraform to manage my Git repositories (with GitHub provider). It's an infrastructure too, after all. With proper structure and layers of abstractions - my Terraform code alone may easily go over 10 repositories for even smallest projects, and managing repositories should not be a burden. I want every single repository to be unified and configured in the same way, i.e. access, protected branches, merging policies etc.
 
-One day I came to a simple conclusion. If I'm committing my Terraform state to git anyway (at least initially) - why not just fully embrace that concept and do it right? Split the state from the code, dedicate separate isolated Git repository just for the state, and use it transparently to the user - basically make Git a real Terraform backend. That would actually solve my chicken-egg problem.
+And then - think about other people who doesn't even have infrastructure (or access). They might want to use Terraform for something completely irrelevant to the infrastructure, as there are hundreds of [providers](https://www.terraform.io/docs/providers/index.html) out there. What if they need to store TF state and just not ready to get into infra/pipelines management business?
 
-Or, would it? Well, maybe not entirely, more like shift it elsewhere. Even if I don't have any infra yet - I surely do have some git server. If I'm about to produce some Terraform modules, I'm surely have some Git location to store them, reference them as dependencies from one another, etc... I'm surely have some space for my team to collaborate on these modules. It might be some public cloud service like GitHub/GitLab/Bitbucket/CodeCommit/etc, or maybe it's a service within my Org that already existed elsewhere, like on-prem or whatever. Sure, technically, the chicken-egg problem isn't going completely away, sounds like a git server needs to be there for you somehow before you start, but c'mon what are the chances you don't have Git server at the start of a new infra project and you would need to setup it just for the sake of TF? Sounds like the chances are that problem would have been solved somehow way before you get to Terraform, so I would consider this approach a proper chicken-egg resolution for Terraform state management.
+Often when I start a new project, I myself - don't have any infrastructure for it yet. I don't even have an AWS account yet. I just want to create a few initial repositories to start working on it. And then my choice as to the state management is usually limited to a local state, and then I'd have to commit that state manually to git. It's fine when I'm alone, but as soon as multiple people involved - it gets complicated (things like manually "locking" the state via chat, fancy PR merging rules etc). And remember - we don't even have any infra yet, so forget about CD and pipelines for now.
 
-I'm not trying to make it look like this is the right and correct way for storing state files, it's probably not. But for the initial stages of the project just for the sake of solving that chicken-egg problem - it would do.
+Of course - there's Terraform Cloud, which is basically exists to address that exact problem (among many other). It provides state management as a service. A great product which I absolutely love, but honestly for a small projects, that doesn't need (yet?) any of that complex logic and fancy pipelines - sounds like an expensive overkill. I just remote state management with locking, that's all. Besides, what if that project is a PoC that is not even guaranteed to stay alive for a long time? What if the nature of the project is actually a Terraform proof of concept with a simple goal to sell developers on using it? If no one knows for sure yet if they even need Terraform - no one will buy commercial version of it for sure. I had to wear a hat of a Terraform proponent and a pioneer multiple times during my career, and all of this usually was a huge barrier and an obstacle for me to even establish initial conversations about Terraform. Terraform state migrations are a piece of cake so we can take care of that much later, when we actually need it.
 
-And then think about other engineers who doesn't have infrastructure or access to it, like application developers. They might want to use Terraform for something completely irrelevant to the infrastructure, there's hundreds of [providers](https://www.terraform.io/docs/providers/index.html) out there, what if they need to store a state and not ready to get into infra/pipelines management business? On the other side, everybody has access to git. Well, most of us likely do. So...
+One day I realized something really simple. If I'm pushing my Terraform state to git anyway (initially during bootstrap) - why not just fully embrace that concept and just do it right? Why not split the state from the code, create a separated isolated Git repository for it, and use it transparently to the Terraform user? Why not, basically, make Git a backend storage for a real Terraform backend?
+
+Even if I don't have any infra yet - I surely do have some git server. I do have some repositories somewhere to share the code, right? It might be some public cloud service like GitHub/GitLab/Bitbucket/etc, or maybe it's a service within my Org that already existed on-prem.
 
 ## Proposed solution
 
-Below is a proposal as to how a native Git backend implementation would look like in Terraform. This HTTP backend implements this proposal, so it would be easier to transfer the code at some point.
+Below is a proposal as to how a native Git backend implementation would look like in Terraform. HTTP backend implementation in this repository, basically, implements this proposal.
 
-Consider a separate Git repository designated just for the Terraform state files. It is used as a backend, i.e. the fact it's a git repository is hidden from the user and considered an implementation detail. That means user scenarios doesn't involve interacting with this repository using Git clients. Git server access configuration would define who have access to manage the state, i.e. users will still need their Git credentials. If Git server access control capabilities isn't enough to meet security requirements, state files might be encrypted on backend, there would be no reason for them to be stored in open text in Git. Storing a state file would be as simple as committing and pushing it to the repository.
+Consider a separate Git repository designated just for the Terraform state files. It is used as a backend, i.e. the fact it's a git repository is hidden from the user and considered an implementation detail. That means user scenarios doesn't really involve interacting with Git repository using Git clients.
 
-Theoretically the same repository with code can be also used as state management. But you are likely will want to use some branch protection and/or PRs, so this might work for your specific use case but is not recommended.
+Git server access configuration would define who have access to manage the state, i.e. users will still need their Git credentials. State files can also be encrypted in Git at rest.
 
 The backend configuration might be looking something like this:
 
 ```terraform
 terraform {
   backend "git" {
-    repository = "git@github.com:my-org/tf-state.git?ref=master"
+    repository = "https://github.com/my-org/tf-state?ref=main"
     file = "path/to/state.json"
   }
 }
 ```
 
-State locking would be based on branches. The following implementation proposal for the state locking might sound little weird, but keep in mind as you read it that the aim was to avoid complex Git scenarios that would involve merging and conflict solving, like it wasn't complex enough to use Git as a Terraform state management backend to begin with. This proposal trying to keep local Git working tree fast-forwardable at all times. Git repository in subject is not meant to be used by people directly after all, so it's fine if we do not follow some Git common sense here.
+State locking would be based on branches, as creating a new branch is atomic operation.
 
-To acquire a lock would mean to push a branch named `locks/${file}`. The branch would need to have a file `${file}.lock` added and committed to it with the standard Terraform locking metadata. If pushing the branch fails with error saying that fast forward push is not possible, that would mean somebody else already acquired the lock. That would make a locking operation truly atomic. To check if the state currently locked is to see if the branch currently exists remotely. To read the information about the current lock, would mean to pull that branch and read the `${file}.lock`. To unlock would mean to delete that remote branch.
+To acquire a lock - it would mean to push a branch named `locks/${file}`. The branch would need to have a file `${file}.lock` added and committed to it with a standard Terraform locking metadata in it. If pushing the branch fails with error saying that fast forward push is not possible - that would mean something else already acquired the lock. To check if the state currently locked - would mean to check if the branch currently exists remotely. To read the information about the current lock - would mean to pull that branch and read the `${file}.lock`. To unlock - would mean to simply delete that remote branch.
 
-To visualize and make it easier to understand, below is how the TF scenarios would translate into the command lines:
+This implementation proposal for the state locking might sound little weird, but keep in mind that the aim was to avoid complex Git scenarios that would involve merging and conflict solving. This proposal is trying to keep local Git working tree fast-forwardable at all times. As Git repository for state files is not really meant to be used by people directly at all, so it should be fine if we diverge a little from Git common best practices here.
+
+To visualize and make it easier to understand, below is how the TF scenarios would translate into the command line:
 
 ### Lock
 
 ```bash
-# Checkout current ref requested by user and cleanup any leftowers
+# Checkout current ref requested by user and cleanup any leftovers
 git reset --hard
 git checkout ${ref}
 git branch -D locks/${file}
@@ -328,13 +362,13 @@ echo ${lock} > ${file}.lock
 git add ${file}.lock
 git commit -m "Lock ${file}"
 git push origin locks/${file}
-# If push failed saying fast forward not possible - somebody else had it already locked
+# If push failed saying that fast forward is not possible - something else had it already locked
 ```
 
-### CheckLock
+### Check existing Lock
 
 ```bash
-# Checkout current ref requested by user and cleanup any leftowers
+# Checkout current ref requested by user and cleanup any leftovers
 git reset --hard
 git checkout ${ref}
 git branch -D locks/${file}
@@ -346,18 +380,18 @@ git checkout locks/${file}
 cat ${file}.lock
 ```
 
-### UnLock
+### Unlock
 
 ```bash
-CheckLock
-# Now it's a matter of deleting the lock branch remotely
+# First - use routine from above to check that it is currently locked and the lock author is me.
+# Then - it's a matter of deleting the lock branch remotely
 git push origin --delete locks/${file}
 ```
 
-### GetState
+### Get state
 
 ```bash
-# Checkout current ref requested by user and cleanup any leftowers
+# Checkout current ref requested by user and cleanup any leftovers
 git reset --hard
 git checkout ${ref}
 # Pull latest
@@ -366,11 +400,11 @@ git pull origin ${ref}
 cat ${file}
 ```
 
-### UpdateState
+### Update state
 
 ```bash
-CheckLock
-# Checkout current ref requested by user and cleanup any leftowers
+# First - use routine from above to check that it is currently locked and the lock author is me.
+# Then - checkout current ref requested by user and cleanup any leftovers
 git reset --hard
 git checkout ${ref}
 # Pull latest
@@ -382,11 +416,11 @@ git commit -m "Update ${file}"
 git push origin ${ref}
 ```
 
-### DeleteState
+### Delete state
 
 ```bash
-CheckLock
-# Checkout current ref requested by user and cleanup any leftowers
+# First - use routine from above to check that it is currently locked and the lock author is me.
+# Then - checkout current ref requested by user and cleanup any leftovers
 git reset --hard
 git checkout ${ref}
 # Pull latest

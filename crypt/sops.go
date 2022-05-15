@@ -2,6 +2,8 @@ package crypt
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 
 	sops "go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/aes"
@@ -39,6 +41,14 @@ func (p *SOPSEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 			KeyGroups: keyGroups,
 			Version:   version.Version,
 		},
+	}
+
+	if shamirThreshold, ok := os.LookupEnv("TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD"); ok {
+		st, err := strconv.Atoi(shamirThreshold)
+		if err != nil {
+			return nil, err
+		}
+		tree.Metadata.ShamirThreshold = st
 	}
 
 	dataKey, errs := tree.GenerateDataKeyWithKeyServices([]keyservice.KeyServiceClient{keyservice.NewLocalClient()})
