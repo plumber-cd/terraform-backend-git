@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	Configs["hc_vault"] = &HCVaultConfig{}
+	Configs["hashicorp-vault"] = &HCVaultConfig{}
 }
 
 type HCVaultConfig struct{}
