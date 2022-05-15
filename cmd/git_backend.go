@@ -11,6 +11,8 @@ import (
 
 	"github.com/plumber-cd/terraform-backend-git/cmd/discovery"
 	"github.com/plumber-cd/terraform-backend-git/server"
+
+	_ "github.com/plumber-cd/terraform-backend-git/storages/git" // force it to init
 )
 
 // gitHTTPBackendConfigPath is a path to the backend tf config to generate
@@ -22,6 +24,13 @@ var gitBackendCmd = &cobra.Command{
 	Short: "Start backend in Git storage mode and execute the wrapper",
 	Long:  "It will also generate " + gitHTTPBackendConfigPath + " in current working directory pointing to this backend",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		cd := viper.GetString("git.dir")
+		if cd != "" {
+			if err := os.Chdir(cd); err != nil {
+				log.Fatal(err)
+			}
+		}
+
 		t, err := template.New(gitHTTPBackendConfigPath).Parse(`
 terraform {
 	backend "http" {
@@ -82,6 +91,9 @@ func init() {
 
 	gitBackendCmd.PersistentFlags().StringP("state", "s", "", "Ref (branch) to use")
 	viper.BindPFlag("git.state", gitBackendCmd.PersistentFlags().Lookup("state"))
+
+	gitBackendCmd.PersistentFlags().StringP("dir", "d", "", "Change current working directory")
+	viper.BindPFlag("git.dir", gitBackendCmd.PersistentFlags().Lookup("dir"))
 
 	discovery.RegisterBackend(gitBackendCmd)
 }
