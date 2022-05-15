@@ -34,7 +34,14 @@ func Start() {
 
 	address := viper.GetString("address")
 	log.Println("listen on", address)
-	log.Fatal(http.ListenAndServe(address, mux))
+
+	httpCert, okHttpCert := os.LookupEnv("TF_BACKEND_GIT_HTTPS_CERT")
+	httpKey, okHttpKey := os.LookupEnv("TF_BACKEND_GIT_HTTPS_KEY")
+	if okHttpCert && okHttpKey {
+		log.Fatal(http.ListenAndServeTLS(address, httpCert, httpKey, mux))
+	} else {
+		log.Fatal(http.ListenAndServe(address, mux))
+	}
 }
 
 // basicAuth checking for user authentication
@@ -163,7 +170,7 @@ func handleFunc(response http.ResponseWriter, request *http.Request) {
 
 		response.Header().Set("Content-Type", "application/json")
 		response.WriteHeader(http.StatusOK)
-		response.Write(state)
+		_, _ = response.Write(state)
 	case http.MethodPost:
 		log.Printf("Saving state to %s", metadata.Params.String())
 
@@ -221,25 +228,24 @@ func (handler *handler) clientError(err error) {
 // If error was unknown, just use defaultCode and defaultResponse error message.
 func (handler *handler) responseError(defaultCode int, defaultResponse string, actualErr error) {
 	log.Printf("%s", actualErr)
-	switch actualErr.(type) {
+	switch actualErr := actualErr.(type) {
 	case *types.ErrLocked:
 		handler.Response.WriteHeader(http.StatusConflict)
-		handler.Response.Write(actualErr.(*types.ErrLocked).Lock)
+		_, _ = handler.Response.Write(actualErr.Lock)
 	default:
 		switch actualErr {
 		case types.ErrLockMissing:
 			handler.Response.WriteHeader(http.StatusPreconditionRequired)
-			handler.Response.Write([]byte("428 - Locking Required"))
+			_, _ = handler.Response.Write([]byte("428 - Locking Required"))
 		case types.ErrStateDidNotExisted:
 			handler.Response.WriteHeader(http.StatusNoContent)
 		case types.ErrUnauthorized:
 			handler.Response.Header().Set("WWW-Authenticate", `Basic realm=terraform-backend-git`)
 			handler.Response.WriteHeader(http.StatusUnauthorized)
-			handler.Response.Write([]byte("401 - Unauthorized"))
+			_, _ = handler.Response.Write([]byte("401 - Unauthorized"))
 		default:
 			handler.Response.WriteHeader(defaultCode)
-			handler.Response.Write([]byte(defaultResponse))
+			_, _ = handler.Response.Write([]byte(defaultResponse))
 		}
-
 	}
 }
