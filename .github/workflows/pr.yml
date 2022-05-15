@@ -1,0 +1,19 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Build
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          push: false
