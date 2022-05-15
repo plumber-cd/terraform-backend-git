@@ -16,13 +16,3 @@ jobs:
           version: v0.0.14
       - name: Use command
         run: terraform-backend-git version
-  build-ext:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup terraform-backend-git
-        uses: plumber-cd/terraform-backend-git@${{ env.GITHUB_SHA }}
-        with:
-          version: v0.0.14
-      - name: Use command
-        run: terraform-backend-git version
