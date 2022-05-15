@@ -12,6 +12,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1
 	go.mozilla.org/sops/v3 v3.7.3
 	golang.org/x/crypto v0.0.0-20220513210258-46612604a0f9
+	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
 	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a
 )
 
@@ -37,6 +38,7 @@ require (
 	github.com/aws/aws-sdk-go v1.43.43 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
@@ -88,6 +90,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
