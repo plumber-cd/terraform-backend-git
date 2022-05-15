@@ -34,9 +34,10 @@ var gitBackendCmd = &cobra.Command{
 		t, err := template.New(gitHTTPBackendConfigPath).Parse(`
 terraform {
 	backend "http" {
-		address = "http://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
-		lock_address = "http://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
-		unlock_address = "http://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
+		address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
+		lock_address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
+		unlock_address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
+		skip_cert_verification = {{ .skipHttpsVerification }}
 		username = "{{ .username }}"
 		password = "{{ .password }}"
 	}
@@ -46,14 +47,28 @@ terraform {
 			log.Fatal(err)
 		}
 
+		_, okHttpCert := os.LookupEnv("TF_BACKEND_GIT_HTTPS_CERT")
+		_, okHttpKey := os.LookupEnv("TF_BACKEND_GIT_HTTPS_KEY")
+		protocol := "http"
+		if okHttpCert && okHttpKey {
+			protocol = "https"
+		}
+
+		skipHttpsVerification, okSkipHttpsVerification := os.LookupEnv("TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION")
+		if !okSkipHttpsVerification {
+			skipHttpsVerification = "false"
+		}
+
 		username, _ := os.LookupEnv("TF_BACKEND_GIT_HTTP_USERNAME")
 		password, _ := os.LookupEnv("TF_BACKEND_GIT_HTTP_PASSWORD")
 
 		addr := strings.Split(viper.GetString("address"), ":")
 		p := map[string]string{
-			"port":     addr[len(addr)-1],
-			"username": username,
-			"password": password,
+			"port":                  addr[len(addr)-1],
+			"protocol":              protocol,
+			"skipHttpsVerification": skipHttpsVerification,
+			"username":              username,
+			"password":              password,
 		}
 
 		for _, flag := range []string{"repository", "ref", "state"} {

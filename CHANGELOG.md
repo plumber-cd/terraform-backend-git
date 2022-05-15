@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.19] - 2022-05-14
 
+### Added
+
+- Implemented TLS mode
+
 ### Changed
 
 - Introduced `--dir` option under `git` backend - now current working directory can be changed dynamically

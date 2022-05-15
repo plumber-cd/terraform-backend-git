@@ -13,14 +13,21 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
       - [From Sources](#from-sources)
     - [Usage](#usage)
       - [As wrapper](#as-wrapper)
-      - [with Hashicorp Configuration Language (HCL)](#with-hashicorp-configuration-language-(hcl))
+      - [with Hashicorp Configuration Language (HCL)](#with-hashicorp-configuration-language-hcl)
       - [as Terraform HTTP backend](#as-terraform-http-backend)
       - [As Github Action](#as-github-action)
+        - [Setup action](#setup-action)
+        - [Inputs](#inputs)
+          - [`version`](#version)
+        - [Outputs](#outputs)
+          - [`version`](#version-1)
+        - [Example usage](#example-usage)
     - [Wrappers CLI](#wrappers-cli)
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
     - [State Encryption](#state-encryption)
     - [Running backend remotely](#running-backend-remotely)
+    - [TLS](#tls)
     - [Basic HTTP Authentication](#basic-http-authentication)
     - [Why not native Terraform Backend](#why-not-native-terraform-backend)
   - [Why storing state in Git](#why-storing-state-in-git)
@@ -233,6 +240,10 @@ Therefore it will not be considered to implement any rich HTTP-related features 
 Make sure you do not open the port in your firewall for remote connections. By default it would start on port `6061` and would use `127.0.0.1` as the binding address, so that nothing would be able to connect remotely. That would still not protect you from local loop interface traffic interception or spoofing (or even having a bad actor who already got the access to the host to send HTTP requests directly to the endpoint), so consider enabling Basic HTTP Authentication and TLS encryption.
 
 You may get creative and use something like K8s Network Policies like `calico`, or wrap backend traffic into API Gateway or ServiceMesh like Istio to add external layer of encryption and authentication, and then at your discretion you may run it with `--address=:6061` argument so the backend will bind to `0.0.0.0` and become remotely accessible.
+
+### TLS
+
+You can set `TF_BACKEND_GIT_HTTPS_CERT` and `TF_BACKEND_GIT_HTTPS_KEY` pointing to your cert and a key files. This will make HTTP backend to start in TLS mode. If you are using self-signed certificate - you can also set `TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION=true` and that will enable `skip_cert_verification` in terraform config.
 
 ### Basic HTTP Authentication
 
