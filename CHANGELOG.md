@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2022-05-15
+
+### Changed
+
+- Existing AES256 state file encryption is no longer recommended.
+
+### Added
+
+- New state file encryption provider using `sops`. Currently integrated with PGP, AWS KMS and Hashicorp Vault.
+
 ## [0.0.19] - 2022-05-14
 
 ### Added
