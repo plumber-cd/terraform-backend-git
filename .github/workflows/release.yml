@@ -47,25 +47,6 @@ jobs:
         with:
           name: terraform-backend-git
           path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
-        with:
-          build-args: |
-            RELEASE_STRING=${{ env.RELEASE_STRING }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
   docker-image:
     name: Build Docker Image
     runs-on: ubuntu-latest
