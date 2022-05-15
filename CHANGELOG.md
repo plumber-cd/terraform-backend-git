@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.19] - 2022-05-14
+
+### Changed
+
+- Introduced `--dir` option under `git` backend - now current working directory can be changed dynamically
+
 ## [0.0.18] - 2022-04-30
 
 ### Changed
