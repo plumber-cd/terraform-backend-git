@@ -5,6 +5,10 @@ on:
 
 name: Create Release
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build:
     name: Build
@@ -19,12 +23,14 @@ jobs:
           - os: windows
             arch: arm64
     steps:
-      - name: Set RELEASE_VERSION
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
           go-version: '1.18'
+      - name: Set RELEASE_VERSION
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
+      - name: Set RELEASE_STRING
+        run: echo "RELEASE_STRING=v${RELEASE_VERSION}" >> $GITHUB_ENV
       - name: Checkout Code
         uses: actions/checkout@v3
       - name: Add Windows Exe File Extension
@@ -35,12 +41,42 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -ldflags="-X 'github.com/plumber-cd/terraform-backend-git/cmd.Version=${{ env.RELEASE_VERSION }}'" -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
+        run: go build -ldflags="-X 'github.com/plumber-cd/terraform-backend-git/cmd.Version=${{ env.RELEASE_STRING }}'" -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: terraform-backend-git
           path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
+  docker-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Set RELEASE_VERSION
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
+      - name: Set RELEASE_STRING
+        run: echo "RELEASE_STRING=v${RELEASE_VERSION}" >> $GITHUB_ENV
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          build-args: |
+            RELEASE_STRING=${{ env.RELEASE_STRING }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
   release:
     name: Draft Release
     runs-on: ubuntu-latest

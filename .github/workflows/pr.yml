@@ -1,0 +1,53 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, 386, arm64]
+        exclude:
+          - os: darwin
+            arch: 386
+          - os: windows
+            arch: arm64
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.18'
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Build Code
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: go build -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}
+  docker-build:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Build
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          push: false
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup terraform-backend-git
+        uses: ./.github/actions/setup-terraform-backend-git
+        with:
+          version: v0.0.14
+      - name: Use command
+        run: terraform-backend-git version
