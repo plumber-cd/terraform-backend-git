@@ -1,4 +1,4 @@
-name: Test terraform-backend-git action
+name: Test GitHub Action
 
 on:
   pull_request:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup terraform-backend-git
-        uses: plumber-cd/terraform-backend-git@${GITHUB_SHA}
+        uses: plumber-cd/terraform-backend-git@${{ GITHUB_SHA }}
         with:
           version: v0.0.14
       - name: Use command
