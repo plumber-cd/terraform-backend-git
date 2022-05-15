@@ -59,7 +59,7 @@ func createGCM(passphrase string) (cipher.AEAD, error) {
 }
 
 // Encrypt will encrypt the data in buffer and return encrypted result.
-// For a key it will use md5 hash from the passphrase provided.
+// For a key it will use md5 hash from the passphrase.
 func (p *AESEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 	passphrase, err := getEncryptionPassphrase()
 	if err != nil {
@@ -83,7 +83,7 @@ func (p *AESEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 }
 
 // Decrypt will decrypt the data in buffer.
-// For a key it will use md5 hash from the passphrase provided.
+// For a key it will use md5 hash from the passphrase.
 func (p *AESEncryptionProvider) Decrypt(data []byte) ([]byte, error) {
 	passphrase, err := getEncryptionPassphrase()
 	if err != nil {

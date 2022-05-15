@@ -22,7 +22,6 @@ func init() {
 type SOPSEncryptionProvider struct{}
 
 // Encrypt will encrypt the data in buffer and return encrypted result.
-// For a key it will use md5 hash from the passphrase provided.
 func (p *SOPSEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 	keyGroups, err := sc.GetActivatedKeyGroups()
 	if err != nil {
@@ -69,7 +68,6 @@ func (p *SOPSEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 }
 
 // Decrypt will decrypt the data in buffer.
-// For a key it will use md5 hash from the passphrase provided.
 func (p *SOPSEncryptionProvider) Decrypt(data []byte) ([]byte, error) {
 	inputStore := &sopsjson.Store{}
 	tree, _ := inputStore.LoadEncryptedFile(data)
