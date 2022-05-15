@@ -1,4 +1,4 @@
-package main
+package pid
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ func pidRunning() (int, error) {
 	return pid, nil
 }
 
-func lockPidFile() error {
+func LockPidFile() error {
 	pid, err := pidRunning()
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func lockPidFile() error {
 	return ioutil.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0664)
 }
 
-func stopPidFile() error {
+func StopPidFile() error {
 	pid, err := pidRunning()
 	if err != nil {
 		log.Fatal(err)

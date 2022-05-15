@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"log"
@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/plumber-cd/terraform-backend-git/cmd/discovery"
 	"github.com/plumber-cd/terraform-backend-git/server"
 )
 
@@ -69,4 +70,18 @@ terraform {
 			log.Fatal(err)
 		}
 	},
+}
+
+func init() {
+	gitBackendCmd.PersistentFlags().StringP("repository", "r", "", "Repository to use as storage")
+	viper.BindPFlag("git.repository", gitBackendCmd.PersistentFlags().Lookup("repository"))
+
+	gitBackendCmd.PersistentFlags().StringP("ref", "b", "master", "Ref (branch) to use")
+	viper.BindPFlag("git.ref", gitBackendCmd.PersistentFlags().Lookup("ref"))
+	viper.SetDefault("git.ref", "master")
+
+	gitBackendCmd.PersistentFlags().StringP("state", "s", "", "Ref (branch) to use")
+	viper.BindPFlag("git.state", gitBackendCmd.PersistentFlags().Lookup("state"))
+
+	discovery.RegisterBackend(gitBackendCmd)
 }

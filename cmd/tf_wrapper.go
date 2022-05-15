@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"os"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/plumber-cd/terraform-backend-git/cmd/discovery"
 )
 
 // terraformWrapperCmd will pass all arguments to terraform,
@@ -30,4 +32,14 @@ var terraformWrapperCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func init() {
+	terraformWrapperCmd.Flags().StringP("tf", "t", "terraform", "Path to terraform binary")
+	viper.BindPFlag("wrapper.tf.bin", terraformWrapperCmd.Flags().Lookup("tf"))
+	viper.SetDefault("wrapper.tf.bin", "terraform")
+
+	terraformWrapperCmd.Flags().SetInterspersed(false)
+
+	discovery.RegisterWrapper(terraformWrapperCmd)
 }
