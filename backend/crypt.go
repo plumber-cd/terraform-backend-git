@@ -1,41 +1,49 @@
 package backend
 
 import (
+	"fmt"
 	"os"
+
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	"github.com/plumber-cd/terraform-backend-git/crypt"
 )
 
-// getEncryptionPassphrase should check all possible config sources and return a state backend encryption key.
-func getEncryptionPassphrase() string {
-	passphrase, _ := os.LookupEnv("TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
-	return passphrase
+func getEncryptionProvider() (crypt.EncryptionProvider, error) {
+	provider, enabled := os.LookupEnv("TF_BACKEND_HTTP_ENCRYPTION_PROVIDER")
+	if enabled {
+		if !slices.Contains(maps.Keys(crypt.EncryptionProviders), provider) {
+			return nil, fmt.Errorf("Unknown encryption provider %q", provider)
+		}
+		return crypt.EncryptionProviders[provider], nil
+	}
+
+	// For backward compatibility
+	_, aesEnabled := os.LookupEnv("TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
+	if aesEnabled {
+		return crypt.EncryptionProviders["aes"], nil
+	}
+
+	return nil, nil
 }
 
 // encryptIfEnabled if encryption was enabled - return encrypted data, otherwise return the data as-is.
 func encryptIfEnabled(state []byte) ([]byte, error) {
-	passphrase := getEncryptionPassphrase()
-
-	if passphrase == "" {
-		return state, nil
+	if ep, err := getEncryptionProvider(); err != nil {
+		return nil, err
+	} else if ep != nil {
+		return ep.Encrypt(state)
 	}
-
-	return crypt.EncryptAES(state, getEncryptionPassphrase())
+	return state, nil
 }
 
-// decryptIfEnabled if encryption was enabled - attempt to decrypt the data. Otherwise return it as-is.
-// If decryption fails, it will assume encryption was not enabled previously for this state and return it as-is too.
+// decryptIfEnabled if encryption was enabled - return decrypted data, otherwise return the data as-is.
 func decryptIfEnabled(state []byte) ([]byte, error) {
-	passphrase := getEncryptionPassphrase()
-
-	if passphrase == "" {
-		return state, nil
+	if ep, err := getEncryptionProvider(); err != nil {
+		return nil, err
+	} else if ep != nil {
+		return ep.Decrypt(state)
 	}
-
-	buf, err := crypt.DecryptAES(state, getEncryptionPassphrase())
-	if err != nil && err.Error() == "cipher: message authentication failed" {
-		// Assumei t wasn't previously encrypted, return as-is
-		return state, nil
-	}
-	return buf, err
+	return state, nil
 }
