@@ -10,18 +10,13 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
     - [Installation](#installation)
       - [Brew](#brew)
       - [From Release](#from-release)
+      - [As Docker Image](#as-docker-image)
+      - [As Github Action](#as-github-action)
       - [From Sources](#from-sources)
     - [Usage](#usage)
       - [Wrapper Mode](#wrapper-mode)
       - [Hashicorp Configuration Language (HCL) Mode](#hashicorp-configuration-language-hcl-mode)
       - [Standalone Terraform HTTP Backend Mode](#standalone-terraform-http-backend-mode)
-      - [As Github Action](#as-github-action)
-        - [Setup action](#setup-action)
-        - [Inputs](#inputs)
-          - [`version`](#version)
-        - [Outputs](#outputs)
-          - [`version`](#version-1)
-        - [Example usage](#example-usage)
     - [Wrappers CLI](#wrappers-cli)
     - [Configuration](#configuration)
     - [Git Credentials](#git-credentials)
@@ -57,6 +52,29 @@ Installation with [Brew](https://github.com/plumber-cd/terraform-backend-git/iss
 Download a binary from [Releases](https://github.com/plumber-cd/terraform-backend-git/releases). All binaries built with GitHub Actions and you can inspect [how](.github/workflows/release.yml).
 
 Don't forget to add it to your `PATH`.
+
+#### As Docker Image
+
+See https://github.com/plumber-cd/terraform-backend-git/pkgs/container/terraform-backend-git.
+
+```bash
+docker pull ghcr.io/plumber-cd/terraform-backend-git:latest
+```
+
+#### As Github Action
+
+See https://github.com/marketplace/actions/setup-terraform-backend-git.
+
+```yaml
+steps:
+  - name: Setup terraform-backend-git
+    uses: plumber-cd/setup-terraform-backend-git@v1
+    with:
+      version:
+        0.1.2
+  - name: Use terraform-backend-git
+    run: terraform-backend-git version
+```
 
 #### From Sources
 
@@ -136,45 +154,6 @@ When you're done, and if you want to stop the backend - it uses `pid` files to m
 
 ```bash
 terraform-backend-git stop
-```
-
-#### As Github Action
-
-##### Setup action
-
-This action downloads a version of [terraform-backend-git](https://github.com/plumber-cd/terraform-backend-git) and adds it to the path. It makes the [wrapper CLI](terraform-backend-git#wrappers-cli) ready to use in the following steps of the same job.
-
-##### Inputs
-
-###### `version`
-
-The release version to fetch. This has to be in the form `<tag_name>`.
-
-##### Outputs
-
-###### `version`
-
-The version number of the release tag.
-
-##### Example usage
-
-```yaml
-uses: plumber-cd/terraform-backend-git@master
-with:
-  version: "v0.0.14"
-```
-
-Example inside a job:
-
-```yaml
-steps:
-  - uses: actions/checkout@v2
-  - name: Setup terraform-backend-git
-    uses: plumber-cd/terraform-backend-git@master
-    with:
-      version: v0.0.14
-  - name: Use command
-    run: terraform-backend-git version
 ```
 
 ### Wrappers CLI
