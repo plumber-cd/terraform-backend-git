@@ -212,6 +212,11 @@ Unfortunately `go-git` will not mimic real Git client and will not automatically
 
 ### State Encryption
 
+To enable encryption set the env var `TF_BACKEND_HTTP_ENCRYPTION_PROVIDER` to one of the following values:
+
+- `sops`
+- `aes`
+
 We are using [`sops`](https://github.com/mozilla/sops) as encryption abstraction. `sops` supports many different encryption backends, but unfortunately it does not provide one stop API for all of them, so on our side we should define configuration and create binding for each. At the moment, we have following bindings for `sops` backends:
 
 - PGP
