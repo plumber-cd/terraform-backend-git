@@ -10,4 +10,7 @@ RUN mkdir bin && go build \
 
 FROM debian:buster
 
+# Include CA Certs to resolve TLS handshakes
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update && apt-get install -y ca-certificates
+
 COPY --from=build /go/delivery/bin /usr/bin
