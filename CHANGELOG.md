@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed #31 (thanks @joaquinrovira!)
+- Fixed #31 (thanks [@joaquinrovira](https://github.com/joaquinrovira)!)
 
 ### Updated
 
