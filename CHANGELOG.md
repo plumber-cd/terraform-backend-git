@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2023-02-15
+
+### Fixed
+
+- Fixed #31 (thanks @joaquinrovira!)
+
+### Updated
+
+- Go to 1.19
+- Debian image to `bullseye`
+- Various Go dependencies (except for go-git due to backward incompatible changes in https://github.com/go-git/go-git/pull/548)
+
 ## [0.1.2] - 2022-05-15
 
 ### Added
