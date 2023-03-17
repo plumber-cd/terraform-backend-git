@@ -2,6 +2,7 @@ package crypt
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -70,17 +71,24 @@ func (p *SOPSEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 // Decrypt will decrypt the data in buffer.
 func (p *SOPSEncryptionProvider) Decrypt(data []byte) ([]byte, error) {
 	inputStore := &sopsjson.Store{}
-	tree, _ := inputStore.LoadEncryptedFile(data)
+	tree, err := inputStore.LoadEncryptedFile(data)
+	if err != nil {
+		return nil, err
+	}
 
 	if tree.Metadata.Version == "" {
+		log.Println("SOPS metadata version was not set, assuming state was not previously encrypted and returning as-is document")
 		return data, nil
 	}
 
-	_, _ = common.DecryptTree(common.DecryptTreeOpts{
+	_, err = common.DecryptTree(common.DecryptTreeOpts{
 		Cipher:      aes.NewCipher(),
 		Tree:        &tree,
 		KeyServices: []keyservice.KeyServiceClient{keyservice.NewLocalClient()},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	outputStore := &sopsjson.Store{}
 	return outputStore.EmitPlainFile(tree.Branches)
