@@ -19,14 +19,14 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
       - [Standalone Terraform HTTP Backend Mode](#standalone-terraform-http-backend-mode)
     - [Wrappers CLI](#wrappers-cli)
     - [Configuration](#configuration)
-    - [Git Credentials](#git-credentials)
-    - [State Encryption](#state-encryption)
-      - [`sops`](#sops)
-        - [PGP](#pgp)
-        - [AWS KMS](#aws-kms)
-        - [GCP KMS](#gcp-kms)
-        - [Hashicorp Vault](#hashicorp-vault)
-      - [AES256](#aes256)
+      - [Git Credentials](#git-credentials)
+      - [State Encryption](#state-encryption)
+        - [`sops`](#sops)
+          - [PGP](#pgp)
+          - [AWS KMS](#aws-kms)
+          - [GCP KMS](#gcp-kms)
+          - [Hashicorp Vault](#hashicorp-vault)
+        - [AES256](#aes256)
     - [Running backend remotely](#running-backend-remotely)
     - [TLS](#tls)
     - [Basic HTTP Authentication](#basic-http-authentication)
@@ -239,27 +239,27 @@ We are using [`sops`](https://github.com/mozilla/sops) as encryption abstraction
 
 Before we integrated with `sops` - we had a basic AES256 encryption via static passphrase. It is no longer recommended, although might be useful in some limited scenarios. Basic AES256 encryption is using one shared key, and it encrypts entire JSON state file that it can no longer be read as JSON. `sops` supports various encryption-as-service providers such as AWS KMS and Hashicorp Vault Transit - meaning encryption can be safely performed without revealing private key to the encryption clients. That means keys can be easily rotated, access can be easily revoked and generally it dramatically reduces chances of the key leaks.
 
-#### `sops`
+##### `sops`
 
 `sops` supports [Shamir's Secret Sharing](https://github.com/mozilla/sops#214key-groups). You can configure multiple backends at once - each will be used to encrypt a part of the key. You can set `TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD` / `encryption.sops.shamir_threshold` if you want to use a specific threshold - by default, all keys used for encryption will be required for decryption.
 
-##### PGP
+###### PGP
 
 Use `TF_BACKEND_HTTP_SOPS_PGP_FP` / `encryption.sops.gpg.key_ids`  to provide a comma separated PGP key fingerprints. Keys must be added to a local `gpg` in order to encrypt. Private part of the key must be present in order for decrypt.
 
-##### AWS KMS
+###### AWS KMS
 
 Use `TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS` / `encryption.sops.aws.key_arns` to provide a comma separated list of KMS ARNs. AWS SDK will use standard [credentials provider chain](https://docs.aws.amazon.com/sdk-for-go/api/aws/credentials/) in order to automatically discover local credentials in standard `AWS_*` environment variables or `~/.aws`. You can optionally use `TF_BACKEND_HTTP_SOPS_AWS_PROFILE` / `encryption.sops.aws.profile` to point it to a specific shared profile. You can also provide additional KMS encryption context using `TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT` / `encryption.sops.aws.kms_context` - it is a comma separated list of `key=value` pairs.
 
-##### GCP KMS
+###### GCP KMS
 
 Use `TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS` / `encryption.sops.gcp.key` to provide a comma separated list of GCP KMS IDs. Read [Encrypting using GCP KMS](https://github.com/getsops/sops#encrypting-using-gcp-kms) for further details.
 
-##### Hashicorp Vault
+###### Hashicorp Vault
 
 Use `TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS` / `encryption.sops.hc_vault.uris` to point it to the Vault Transit keys. It is a comma separated list of URLs in a form of `${VAULT_ADDR}/v1/transit/keys/key`, where `transit` is a name of Vault Transit mount and `key` is the name of the key in that mount. Under the hood Vault SDK is using standard credentials resolver to automatically discover Vault credentials in the environment, meaning you can either use `vault login` or set `VAULT_TOKEN` environment variable.
 
-#### AES256
+##### AES256
 
 To enable state encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` / `encryption.aes.passprase` environment variable / config file setting to set a passphrase. Backend will encrypt and decrypt (using AES256, server-side) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption for HTTP backend. Traffic between Terraform and this backend stays unencrypted at all times.
 
