@@ -52,5 +52,5 @@ func decryptIfEnabled(state []byte) ([]byte, error) {
 
 func init() {
 	viper.BindEnv("encryption.provider", "TF_BACKEND_HTTP_ENCRYPTION_PROVIDER")
-	viper.BindEnv("aes.passprase", "TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
+	viper.BindEnv("encryption.aes.passprase", "TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
 }

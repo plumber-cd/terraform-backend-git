@@ -13,11 +13,11 @@ func init() {
 type PGPConfig struct{}
 
 func (c *PGPConfig) IsActivated() bool {
-	return viper.InConfig("encryption.sops.gpg.key")
+	return viper.InConfig("encryption.sops.gpg.key_ids")
 }
 
 func (c *PGPConfig) KeyGroup() (sops.KeyGroup, error) {
-	fp := viper.GetString("encryption.sops.gpg.key")
+	fp := viper.GetString("encryption.sops.gpg.key_ids")
 
 	var keyGroup sops.KeyGroup
 
@@ -29,5 +29,5 @@ func (c *PGPConfig) KeyGroup() (sops.KeyGroup, error) {
 }
 
 func init() {
-	viper.BindEnv("encryption.sops.gpg.key", "TF_BACKEND_HTTP_SOPS_PGP_FP")
+	viper.BindEnv("encryption.sops.gpg.key_ids", "TF_BACKEND_HTTP_SOPS_PGP_FP")
 }

@@ -43,7 +43,7 @@ func (p *SOPSEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 		},
 	}
 
-	if shamirThreshold := viper.GetString("sops.shamir_threshold"); shamirThreshold != "" {
+	if shamirThreshold := viper.GetString("encryption.sops.shamir_threshold"); shamirThreshold != "" {
 		st, err := strconv.Atoi(shamirThreshold)
 		if err != nil {
 			return nil, err

@@ -22,7 +22,7 @@ type AESEncryptionProvider struct{}
 
 // getEncryptionPassphrase should check all possible config sources and return a state backend encryption key.
 func getEncryptionPassphrase() (string, error) {
-	passphrase := viper.GetString("aes.passprase")
+	passphrase := viper.GetString("encryption.aes.passprase")
 	if passphrase == "" {
 		return "", ErrEncryptionPassphraseNotSet
 	}

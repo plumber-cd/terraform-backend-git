@@ -13,12 +13,12 @@ func init() {
 type GcpKmsConfig struct{}
 
 func (c *GcpKmsConfig) IsActivated() bool {
-	return viper.InConfig("encryption.sops.gpg.key")
+	return viper.InConfig("encryption.sops.gcp.key")
 
 }
 
 func (c *GcpKmsConfig) KeyGroup() (sops.KeyGroup, error) {
-	keys := viper.GetString("encryption.sops.gpg.key")
+	keys := viper.GetString("encryption.sops.gcp.key")
 
 	var keyGroup sops.KeyGroup
 
@@ -30,5 +30,5 @@ func (c *GcpKmsConfig) KeyGroup() (sops.KeyGroup, error) {
 }
 
 func init() {
-	viper.BindEnv("encryption.sops.gpg.key", "TF_BACKEND_HTTP_SOPS_PGP_FP")
+	viper.BindEnv("encryption.sops.gcp.key", "TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS")
 }
