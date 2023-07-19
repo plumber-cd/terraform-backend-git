@@ -24,6 +24,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
       - [`sops`](#sops)
         - [PGP](#pgp)
         - [AWS KMS](#aws-kms)
+        - [GCP KMS](#gcp-kms)
         - [Hashicorp Vault](#hashicorp-vault)
       - [AES256](#aes256)
     - [Running backend remotely](#running-backend-remotely)
@@ -221,6 +222,7 @@ We are using [`sops`](https://github.com/mozilla/sops) as encryption abstraction
 
 - PGP
 - AWS KMS
+- GCP KMS
 - Hashicorp Vault
 
 Before we integrated with `sops` - we had a basic AES256 encryption via static passphrase. It is no longer recommended, although might be useful in some limited scenarios. Basic AES256 encryption is using one shared key, and it encrypts entire JSON state file that it can no longer be read as JSON. `sops` supports various encryption-as-service providers such as AWS KMS and Hashicorp Vault Transit - meaning encryption can be safely performed without revealing private key to the encryption clients. That means keys can be easily rotated, access can be easily revoked and generally it dramatically reduces chances of the key leaks.
@@ -236,6 +238,10 @@ Use `TF_BACKEND_HTTP_SOPS_PGP_FP` to provide a comma separated PGP key fingerpri
 ##### AWS KMS
 
 Use `TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS` to provide a comma separated list of KMS ARNs. AWS SDK will use standard [credentials provider chain](https://docs.aws.amazon.com/sdk-for-go/api/aws/credentials/) in order to automatically discover local credentials in standard `AWS_*` environment variables or `~/.aws`. You can optionally use `TF_BACKEND_HTTP_SOPS_AWS_PROFILE` to point it to a specific shared profile. You can also provide additional KMS encryption context using `TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT` - it is a comma separated list of `key=value` pairs.
+
+##### GCP KMS
+
+Use `TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS` to provide a comma separated list of GCP KMS IDs. Read [Encrypting using GCP KMS](https://github.com/getsops/sops#encrypting-using-gcp-kms) for further details.
 
 ##### Hashicorp Vault
 
