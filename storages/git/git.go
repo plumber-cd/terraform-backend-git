@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
 	sshagent "github.com/xanzy/ssh-agent"
 
 	"github.com/go-git/go-billy/v5/memfs"
@@ -33,15 +34,15 @@ func init() {
 
 // authHTTP discovers environment for HTTP credentials
 func authBasicHTTP() (*http.BasicAuth, error) {
-	username, okUsername := os.LookupEnv("GIT_USERNAME")
-	if !okUsername {
+	username := viper.GetString("git.username")
+	if username == "" {
 		return nil, errors.New("Git protocol was http but username was not set")
 	}
 
-	password, okPassword := os.LookupEnv("GIT_PASSWORD")
-	if !okPassword {
-		ghToken, okGhToken := os.LookupEnv("GITHUB_TOKEN")
-		if !okGhToken {
+	password := viper.GetString("git.password")
+	if password == "" {
+		ghToken := viper.GetString("git.github_token")
+		if ghToken != "" {
 			return nil, errors.New("Git protocol was http but neither password nor token was set")
 		}
 		password = ghToken
@@ -72,8 +73,8 @@ func authSSHAgent(params *RequestMetadataParams) (*sshGit.PublicKeysCallback, er
 
 // authSSH discovers environment for SSH credentials
 func authSSH() (*sshGit.PublicKeys, error) {
-	pemFile, okPem := os.LookupEnv("SSH_PRIVATE_KEY")
-	if !okPem {
+	pemFile := viper.GetString("git.ssh_private_key")
+	if pemFile == "" {
 		// Ok then, try to discover SSH keys in the user home
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -116,7 +117,7 @@ func auth(params *RequestMetadataParams) (transport.AuthMethod, error) {
 	hostKeyCallbackHelper := sshGit.HostKeyCallbackHelper{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	if val, ok := os.LookupEnv("StrictHostKeyChecking"); ok && val == "no" {
+	if val := viper.GetString("git.strict_host_key_checking"); val == "no" {
 		strictHostKeyChecking = false
 	}
 
@@ -449,4 +450,12 @@ func (storageSession *storageSession) writeFile(path string, buf []byte) error {
 	}
 
 	return nil
+}
+
+func init() {
+	viper.BindEnv("git.username", "GIT_USERNAME")
+	viper.BindEnv("git.password", "GIT_PASSWORD")
+	viper.BindEnv("git.github_token", "GITHUB_TOKEN")
+	viper.BindEnv("git.ssh_private_key", "SSH_PRIVATE_KEY")
+	viper.BindEnv("git.strict_host_key_checking", "STRICT_HOST_KEY_CHECKING", "StrictHostKeyChecking")
 }

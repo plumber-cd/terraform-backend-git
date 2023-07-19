@@ -1,8 +1,7 @@
 package sops
 
 import (
-	"os"
-
+	"github.com/spf13/viper"
 	sops "go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/hcvault"
 )
@@ -14,12 +13,11 @@ func init() {
 type HCVaultConfig struct{}
 
 func (c *HCVaultConfig) IsActivated() bool {
-	_, ok := os.LookupEnv("TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS")
-	return ok
+	return viper.InConfig("encryption.sops.hc_vault.uris")
 }
 
 func (c *HCVaultConfig) KeyGroup() (sops.KeyGroup, error) {
-	uris := os.Getenv("TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS")
+	uris := viper.GetString("encryption.sops.hc_vault.uris")
 
 	hcVaultKeys, err := hcvault.NewMasterKeysFromURIs(uris)
 	if err != nil {
@@ -33,4 +31,8 @@ func (c *HCVaultConfig) KeyGroup() (sops.KeyGroup, error) {
 	}
 
 	return keyGroup, nil
+}
+
+func init() {
+	viper.BindEnv("encryption.sops.hc_vault.uris", "TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS")
 }

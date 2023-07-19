@@ -3,7 +3,6 @@ package crypt
 import (
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 
 	sops "go.mozilla.org/sops/v3"
@@ -14,6 +13,7 @@ import (
 	"go.mozilla.org/sops/v3/version"
 
 	sc "github.com/plumber-cd/terraform-backend-git/crypt/sops"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -43,7 +43,7 @@ func (p *SOPSEncryptionProvider) Encrypt(data []byte) ([]byte, error) {
 		},
 	}
 
-	if shamirThreshold, ok := os.LookupEnv("TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD"); ok {
+	if shamirThreshold := viper.GetString("sops.shamir_threshold"); shamirThreshold != "" {
 		st, err := strconv.Atoi(shamirThreshold)
 		if err != nil {
 			return nil, err
@@ -92,4 +92,8 @@ func (p *SOPSEncryptionProvider) Decrypt(data []byte) ([]byte, error) {
 
 	outputStore := &sopsjson.Store{}
 	return outputStore.EmitPlainFile(tree.Branches)
+}
+
+func init() {
+	viper.BindEnv("sops.shamir_threshold", "TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD")
 }

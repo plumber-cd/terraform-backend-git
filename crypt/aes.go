@@ -6,7 +6,8 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
-	"os"
+
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -21,8 +22,8 @@ type AESEncryptionProvider struct{}
 
 // getEncryptionPassphrase should check all possible config sources and return a state backend encryption key.
 func getEncryptionPassphrase() (string, error) {
-	passphrase, ok := os.LookupEnv("TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
-	if !ok {
+	passphrase := viper.GetString("aes.passprase")
+	if passphrase == "" {
 		return "", ErrEncryptionPassphraseNotSet
 	}
 	return passphrase, nil

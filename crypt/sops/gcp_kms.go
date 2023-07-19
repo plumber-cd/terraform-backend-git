@@ -1,8 +1,7 @@
 package sops
 
 import (
-	"os"
-
+	"github.com/spf13/viper"
 	sops "go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/gcpkms"
 )
@@ -14,12 +13,12 @@ func init() {
 type GcpKmsConfig struct{}
 
 func (c *GcpKmsConfig) IsActivated() bool {
-	_, ok := os.LookupEnv("TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS")
-	return ok
+	return viper.InConfig("encryption.sops.gpg.key")
+
 }
 
 func (c *GcpKmsConfig) KeyGroup() (sops.KeyGroup, error) {
-	keys := os.Getenv("TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS")
+	keys := viper.GetString("encryption.sops.gpg.key")
 
 	var keyGroup sops.KeyGroup
 
@@ -28,4 +27,8 @@ func (c *GcpKmsConfig) KeyGroup() (sops.KeyGroup, error) {
 	}
 
 	return keyGroup, nil
+}
+
+func init() {
+	viper.BindEnv("encryption.sops.gpg.key", "TF_BACKEND_HTTP_SOPS_PGP_FP")
 }

@@ -2,7 +2,8 @@ package backend
 
 import (
 	"fmt"
-	"os"
+
+	"github.com/spf13/viper"
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -11,7 +12,8 @@ import (
 )
 
 func getEncryptionProvider() (crypt.EncryptionProvider, error) {
-	provider, enabled := os.LookupEnv("TF_BACKEND_HTTP_ENCRYPTION_PROVIDER")
+	provider := viper.GetString("encryption.provider")
+	enabled := (provider != "")
 	if enabled {
 		if !slices.Contains(maps.Keys(crypt.EncryptionProviders), provider) {
 			return nil, fmt.Errorf("Unknown encryption provider %q", provider)
@@ -20,7 +22,7 @@ func getEncryptionProvider() (crypt.EncryptionProvider, error) {
 	}
 
 	// For backward compatibility
-	_, aesEnabled := os.LookupEnv("TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
+	aesEnabled := viper.InConfig("aes.passprase")
 	if aesEnabled {
 		return crypt.EncryptionProviders["aes"], nil
 	}
@@ -46,4 +48,9 @@ func decryptIfEnabled(state []byte) ([]byte, error) {
 		return ep.Decrypt(state)
 	}
 	return state, nil
+}
+
+func init() {
+	viper.BindEnv("encryption.provider", "TF_BACKEND_HTTP_ENCRYPTION_PROVIDER")
+	viper.BindEnv("aes.passprase", "TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE")
 }
