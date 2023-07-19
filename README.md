@@ -109,15 +109,26 @@ This mode is explained in more depth in the [wrapper CLI](#wrappers-cli) section
 
 #### Hashicorp Configuration Language (HCL) Mode
 
-You could also create a `terraform-backend-git.hcl` config file and put it next to your `*.tf` code:
+You could also create a `terraform-backend-git.hcl` and `terraform-backend-git.secret.hcl` config files and put it next to your `*.tf` code.
 
+
+*terraform-backend-git.hcl*
 ```hcl
 git.repository = "https://github.com/my-org/tf-state"
 git.ref = "main"
 git.state = "my/state.json"
+
+encryption.provider = "aes"
 ```
 
-You can also specify custom path to the `hcl` config file using `--config` arg.
+*terraform-backend-git.secret.hcl*
+```
+encryption.aes.passprase = "<some-strong-passphrase>"
+```
+
+If you use `terraform-backend-git.secret.hcl` it's essential that you DO NOT commit it to repository. Simpliest way to do it is to add `terraform-backend-git.secret.hcl` to `.gitignore` file.
+
+You can also specify custom path to the `hcl` config file using `--config` arg. Multiple files can be passed by using `--config` arg multiple times.
 
 You can also have a mixed setup, where some parts of configuration comes from `terraform-backend-git.hcl` and some - from CLI arguments or even environment variables (see details below).
 
@@ -184,7 +195,8 @@ Initially it is meant to only support `git` as a storage, hence the name of it i
 
 ### Configuration
 
-CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend config | Description
+#### Common configuration
+CLI | `terraform-backend-git.[secret].hcl` | Environment Variable | TF HTTP backend config | Description
 --- | --- | --- | --- | ---
 `--repository` | `git.repository` | `TF_BACKEND_GIT_GIT_REPOSITORY` |`repository` | Required; Which repository to use for storing TF state?
 `--ref` | `git.ref` | `TF_BACKEND_GIT_GIT_REF` |`ref` | Optional; Which branch to use in that `repository`? Default: `master`.
@@ -193,17 +205,17 @@ CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend confi
 `--address` | `address` | `TF_BACKEND_GIT_ADDRESS` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
 `--access-logs` | `accessLogs` | `TF_BACKEND_GIT_ACCESSLOGS` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
 
-### Git Credentials
+#### Git Credentials
 
-Both HTTP and SSH protocols are supported. As of now, any sensitive configuration is only supported via environment variables.
+Both HTTP and SSH protocols are supported. Be sure not to commit any sensitive configuration to your respository.
 
-Variable | Description
---- | ---
-`GIT_USERNAME` | Specify username for Git, only required for HTTP protocol.
-`GIT_PASSWORD`/`GITHUB_TOKEN` | Git password or token for HTTP protocol. In case of token you still have to specify `GIT_USERNAME`.
-`SSH_AUTH_SOCK` | `ssh-agent` socket.
-`SSH_PRIVATE_KEY` | Path to SSH key for Git access.
-`StrictHostKeyChecking` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
+`terraform-backend-git.secret.hcl` | Environment Variable | Description
+--- | --- | ---
+`git.username` | `GIT_USERNAME` | Specify username for Git, only required for HTTP protocol.
+`git.password` / `git.github_token`| `GIT_PASSWORD` / `GITHUB_TOKEN` | Git password or token for HTTP protocol. In case of token you still have to specify `GIT_USERNAME`.
+ `-` | `SSH_AUTH_SOCK` | `ssh-agent` socket.
+`git.ssh_private_key` | `SSH_PRIVATE_KEY` | Path to SSH key for Git access.
+`git.strict_host_key_checking` | `StrictHostKeyChecking` / `STRICT_HOST_KEY_CHECKING` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
 
 Backend will determine which protocol you are using based on the `repository` URL.
 
@@ -211,9 +223,9 @@ For SSH, it will see if `ssh-agent` is running by looking into `SSH_AUTH_SOCK` v
 
 Unfortunately `go-git` will not mimic real Git client and will not automatically pickup credentials from the environment, so this custom credentials resolver chain has been implemented since I'm lazy to research the "right" original Git client approach. It is recommended to use Git Credentials Helpers (aka `ASKPASS`).
 
-### State Encryption
+#### State Encryption
 
-To enable encryption set the env var `TF_BACKEND_HTTP_ENCRYPTION_PROVIDER` to one of the following values:
+To enable encryption set the env var `TF_BACKEND_HTTP_ENCRYPTION_PROVIDER` or `encryption.provider` setting to one of the following values:
 
 - `sops`
 - `aes`
@@ -229,27 +241,27 @@ Before we integrated with `sops` - we had a basic AES256 encryption via static p
 
 #### `sops`
 
-`sops` supports [Shamir's Secret Sharing](https://github.com/mozilla/sops#214key-groups). You can configure multiple backends at once - each will be used to encrypt a part of the key. You can set `TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD` if you want to use a specific threshold - by default, all keys used for encryption will be required for decryption.
+`sops` supports [Shamir's Secret Sharing](https://github.com/mozilla/sops#214key-groups). You can configure multiple backends at once - each will be used to encrypt a part of the key. You can set `TF_BACKEND_HTTP_SOPS_SHAMIR_THRESHOLD` / `encryption.sops.shamir_threshold` if you want to use a specific threshold - by default, all keys used for encryption will be required for decryption.
 
 ##### PGP
 
-Use `TF_BACKEND_HTTP_SOPS_PGP_FP` to provide a comma separated PGP key fingerprints. Keys must be added to a local `gpg` in order to encrypt. Private part of the key must be present in order for decrypt.
+Use `TF_BACKEND_HTTP_SOPS_PGP_FP` / `encryption.sops.gpg.key_ids`  to provide a comma separated PGP key fingerprints. Keys must be added to a local `gpg` in order to encrypt. Private part of the key must be present in order for decrypt.
 
 ##### AWS KMS
 
-Use `TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS` to provide a comma separated list of KMS ARNs. AWS SDK will use standard [credentials provider chain](https://docs.aws.amazon.com/sdk-for-go/api/aws/credentials/) in order to automatically discover local credentials in standard `AWS_*` environment variables or `~/.aws`. You can optionally use `TF_BACKEND_HTTP_SOPS_AWS_PROFILE` to point it to a specific shared profile. You can also provide additional KMS encryption context using `TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT` - it is a comma separated list of `key=value` pairs.
+Use `TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS` / `encryption.sops.aws.key_arns` to provide a comma separated list of KMS ARNs. AWS SDK will use standard [credentials provider chain](https://docs.aws.amazon.com/sdk-for-go/api/aws/credentials/) in order to automatically discover local credentials in standard `AWS_*` environment variables or `~/.aws`. You can optionally use `TF_BACKEND_HTTP_SOPS_AWS_PROFILE` / `encryption.sops.aws.profile` to point it to a specific shared profile. You can also provide additional KMS encryption context using `TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT` / `encryption.sops.aws.kms_context` - it is a comma separated list of `key=value` pairs.
 
 ##### GCP KMS
 
-Use `TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS` to provide a comma separated list of GCP KMS IDs. Read [Encrypting using GCP KMS](https://github.com/getsops/sops#encrypting-using-gcp-kms) for further details.
+Use `TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS` / `encryption.sops.gcp.key` to provide a comma separated list of GCP KMS IDs. Read [Encrypting using GCP KMS](https://github.com/getsops/sops#encrypting-using-gcp-kms) for further details.
 
 ##### Hashicorp Vault
 
-Use `TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS` to point it to the Vault Transit keys. It is a comma separated list of URLs in a form of `${VAULT_ADDR}/v1/transit/keys/key`, where `transit` is a name of Vault Transit mount and `key` is the name of the key in that mount. Under the hood Vault SDK is using standard credentials resolver to automatically discover Vault credentials in the environment, meaning you can either use `vault login` or set `VAULT_TOKEN` environment variable.
+Use `TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS` / `encryption.sops.hc_vault.uris` to point it to the Vault Transit keys. It is a comma separated list of URLs in a form of `${VAULT_ADDR}/v1/transit/keys/key`, where `transit` is a name of Vault Transit mount and `key` is the name of the key in that mount. Under the hood Vault SDK is using standard credentials resolver to automatically discover Vault credentials in the environment, meaning you can either use `vault login` or set `VAULT_TOKEN` environment variable.
 
 #### AES256
 
-To enable state encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` environment variable to set a passphrase. Backend will encrypt and decrypt (using AES256, server-side) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption for HTTP backend. Traffic between Terraform and this backend stays unencrypted at all times.
+To enable state encryption, you can use `TF_BACKEND_HTTP_ENCRYPTION_PASSPHRASE` / `encryption.aes.passprase` environment variable / config file setting to set a passphrase. Backend will encrypt and decrypt (using AES256, server-side) all state files transparently before storing them in Git. If it fails to decrypt the file obtained from Git, it will assume encryption was not previously enabled and return it as-is. Note this doesn't encrypt the traffic at REST, as Terraform doesn't support any sort of encryption for HTTP backend. Traffic between Terraform and this backend stays unencrypted at all times.
 
 ### Running backend remotely
 
@@ -263,11 +275,11 @@ If you are absolutely sure you want to run this backend in remote standalone mod
 
 ### TLS
 
-You can set `TF_BACKEND_GIT_HTTPS_CERT` and `TF_BACKEND_GIT_HTTPS_KEY` pointing to your cert and a key files. This will make HTTP backend to start in TLS mode. If you are using self-signed certificate - you can also set `TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION=true` in a wrapper mode and that will enable `skip_cert_verification` in the terraform config (or configure it yourself for standalone mode).
+You can set `TF_BACKEND_GIT_HTTPS_CERT` / `server.https_cert` and `TF_BACKEND_GIT_HTTPS_KEY` / `server.https_key` pointing to your cert and a key files. This will make HTTP backend to start in TLS mode. If you are using self-signed certificate - you can also set `TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION=true` / `server.skip_https_verification` in a wrapper mode and that will enable `skip_cert_verification` in the terraform config (or configure it yourself for standalone mode).
 
 ### Basic HTTP Authentication
 
-You can use `TF_BACKEND_GIT_HTTP_USERNAME` and `TF_BACKEND_GIT_HTTP_PASSWORD` environment variables to add an extra layer of protection. In `wrapper` mode, same environment variables will be used to render `*.auto.tf` config for Terraform, but if you are using backend in standalone mode - you will have to tell these credentials to the Terraform explicitly:
+You can use `TF_BACKEND_GIT_HTTP_USERNAME` / `server.http_username` and `TF_BACKEND_GIT_HTTP_PASSWORD` / `server.http_password` environment variables / config file settings to add an extra layer of protection. In `wrapper` mode, same environment variables will be used to render `*.auto.tf` config for Terraform, but if you are using backend in standalone mode - you will have to tell these credentials to the Terraform explicitly:
 
 ```terraform
 terraform {
