@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2023-09-21
+
+### Fixed
+
+- Fix incorrect state file path on Windows (#40)
+
 ## [0.1.5] - 2023-07-18
 
 ### Added
