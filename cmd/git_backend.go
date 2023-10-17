@@ -47,20 +47,19 @@ terraform {
 			log.Fatal(err)
 		}
 
-		_, okHttpCert := os.LookupEnv("TF_BACKEND_GIT_HTTPS_CERT")
-		_, okHttpKey := os.LookupEnv("TF_BACKEND_GIT_HTTPS_KEY")
+		httpCert := viper.GetString("server.https_cert")
+		httpKey := viper.GetString("server.https_key")
 		protocol := "http"
-		if okHttpCert && okHttpKey {
+		if httpCert != "" && httpKey != "" {
 			protocol = "https"
 		}
 
-		skipHttpsVerification, okSkipHttpsVerification := os.LookupEnv("TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION")
-		if !okSkipHttpsVerification {
+		username := viper.GetString("server.http_username")
+		password := viper.GetString("server.http_password")
+		skipHttpsVerification := viper.GetString("server.skip_https_verification")
+		if skipHttpsVerification == "" {
 			skipHttpsVerification = "false"
 		}
-
-		username, _ := os.LookupEnv("TF_BACKEND_GIT_HTTP_USERNAME")
-		password, _ := os.LookupEnv("TF_BACKEND_GIT_HTTP_PASSWORD")
 
 		addr := strings.Split(viper.GetString("address"), ":")
 		p := map[string]string{
@@ -111,4 +110,10 @@ func init() {
 	viper.BindPFlag("git.dir", gitBackendCmd.PersistentFlags().Lookup("dir"))
 
 	discovery.RegisterBackend(gitBackendCmd)
+
+	viper.BindEnv("server.https_cert", "TF_BACKEND_GIT_HTTPS_CERT")
+	viper.BindEnv("server.https_key", "TF_BACKEND_GIT_HTTPS_KEY")
+	viper.BindEnv("server.skip_https_verification", "TF_BACKEND_GIT_HTTPS_SKIP_VERIFICATION")
+	viper.BindEnv("server.http_username", "TF_BACKEND_GIT_HTTP_USERNAME")
+	viper.BindEnv("server.http_password", "TF_BACKEND_GIT_HTTP_PASSWORD")
 }
