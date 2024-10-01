@@ -282,7 +282,7 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		return err
 	}
 
-	if err := storageSession.commit("Update " + params.State); err != nil {
+	if err := storageSession.commitAmend("Update " + params.State); err != nil {
 		return err
 	}
 

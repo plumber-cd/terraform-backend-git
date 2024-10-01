@@ -355,6 +355,15 @@ func (storageSession *storageSession) delete(path string) error {
 
 // commit currently staged changes to the local working tree
 func (storageSession *storageSession) commit(msg string) error {
+	return storageSession.commitWithOptions(msg, git.CommitOptions{})
+}
+
+// commit --amend currently staged changes to the local working tree
+func (storageSession *storageSession) commitAmend(msg string) error {
+	return storageSession.commitWithOptions(msg, git.CommitOptions{Amend: true})
+}
+
+func (storageSession *storageSession) commitWithOptions(msg string, opts git.CommitOptions) error {
 	user, err := user.Current()
 	if err != nil {
 		return err
@@ -370,20 +379,17 @@ func (storageSession *storageSession) commit(msg string) error {
 		return err
 	}
 
+	opts.Author = &object.Signature{
+		Name:  userName,
+		Email: user.Username + "@" + host,
+		When:  time.Now(),
+	}
+
 	tree, err := storageSession.repository.Worktree()
 	if err != nil {
 		return err
 	}
-
-	commitOptions := git.CommitOptions{
-		Author: &object.Signature{
-			Name:  userName,
-			Email: user.Username + "@" + host,
-			When:  time.Now(),
-		},
-	}
-
-	if _, err := tree.Commit(msg, &commitOptions); err != nil {
+	if _, err := tree.Commit(msg, &opts); err != nil {
 		return err
 	}
 
@@ -399,7 +405,8 @@ func (storageSession *storageSession) push() error {
 	}
 
 	pushOptions := git.PushOptions{
-		Auth: storageSession.auth,
+		Auth:  storageSession.auth,
+		Force: true,
 	}
 
 	if err := remote.Push(&pushOptions); err != nil {

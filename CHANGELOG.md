@@ -1,10 +1,15 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- Use commit amend when updating state to maintain repo size
 
 ## [0.1.6] - 2023-09-21
 
@@ -34,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Go to 1.19
 - Debian image to `bullseye`
-- Various Go dependencies (except for go-git due to backward incompatible changes in https://github.com/go-git/go-git/pull/548)
+- Various Go dependencies (except for go-git due to backward incompatible changes in <https://github.com/go-git/go-git/pull/548>)
 
 ## [0.1.2] - 2022-05-15
 
@@ -83,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- GitHub deprecated `set-env`; replaced with https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files
+- GitHub deprecated `set-env`; replaced with <https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files>
 
 ## [0.0.14] - 2020-05-30
 
