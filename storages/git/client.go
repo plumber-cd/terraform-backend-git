@@ -30,6 +30,7 @@ func (storageClient *StorageClient) ParseMetadataParams(request *http.Request, m
 		Repository: query.Get("repository"),
 		Ref:        query.Get("ref"),
 		State:      path.Clean(query.Get("state")),
+		Amend:      strings.ToLower(query.Get("amend")) == "true",
 	}
 
 	if params.Repository == "" {
@@ -282,12 +283,24 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		return err
 	}
 
-	if err := storageSession.commitAmend("Update " + params.State); err != nil {
-		return err
-	}
+	switch params.Amend {
+	case true:
+		if err := storageSession.commitAmend("Update " + params.State); err != nil {
+			return err
+		}
 
-	if err := storageSession.push(); err != nil {
-		return err
+		if err := storageSession.pushForce(); err != nil {
+			return err
+		}
+
+	default:
+		if err := storageSession.commit("Update " + params.State); err != nil {
+			return err
+		}
+
+		if err := storageSession.push(); err != nil {
+			return err
+		}
 	}
 
 	return nil

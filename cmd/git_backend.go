@@ -34,7 +34,7 @@ var gitBackendCmd = &cobra.Command{
 		t, err := template.New(gitHTTPBackendConfigPath).Parse(`
 terraform {
 	backend "http" {
-		address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
+		address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}{{ if eq .amend "true" }}&amend=true{{ end }}&state={{ .state }}"
 		lock_address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
 		unlock_address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
 		skip_cert_verification = {{ .skipHttpsVerification }}
@@ -76,6 +76,7 @@ terraform {
 				log.Fatalf("%s must be set", flag)
 			}
 		}
+		p["amend"] = viper.GetString("git.amend")
 
 		backendConfig, err := os.OpenFile(gitHTTPBackendConfigPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
@@ -106,6 +107,9 @@ func init() {
 
 	gitBackendCmd.PersistentFlags().StringP("state", "s", "", "Ref (branch) to use")
 	viper.BindPFlag("git.state", gitBackendCmd.PersistentFlags().Lookup("state"))
+
+	gitBackendCmd.PersistentFlags().Bool("amend", false, "Use git amend to store updated state")
+	viper.BindPFlag("git.amend", gitBackendCmd.PersistentFlags().Lookup("amend"))
 
 	gitBackendCmd.PersistentFlags().StringP("dir", "d", "", "Change current working directory")
 	viper.BindPFlag("git.dir", gitBackendCmd.PersistentFlags().Lookup("dir"))
