@@ -34,7 +34,7 @@ var gitBackendCmd = &cobra.Command{
 		t, err := template.New(gitHTTPBackendConfigPath).Parse(`
 terraform {
 	backend "http" {
-		address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}{{ if eq .amend "true" }}&amend=true{{ end }}&state={{ .state }}"
+		address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&amend={{ .amend }}&state={{ .state }}"
 		lock_address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
 		unlock_address = "{{ .protocol }}://localhost:{{ .port }}/?type=git&repository={{ .repository }}&ref={{ .ref }}&state={{ .state }}"
 		skip_cert_verification = {{ .skipHttpsVerification }}
