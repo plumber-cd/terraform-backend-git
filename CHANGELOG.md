@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2024-10-15
+
 ### Added
 
 - New `--amend` flag to use commit amend + force push when updating state to maintain repo size
