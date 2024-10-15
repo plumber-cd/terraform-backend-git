@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -355,6 +356,16 @@ func (storageSession *storageSession) delete(path string) error {
 
 // commit currently staged changes to the local working tree
 func (storageSession *storageSession) commit(msg string) error {
+	return storageSession.commitWithOptions(msg, git.CommitOptions{})
+}
+
+// commit --amend currently staged changes to the local working tree
+func (storageSession *storageSession) commitAmend(msg string) error {
+	plumbing, _ := storageSession.repository.Head()
+	return storageSession.commitWithOptions(fmt.Sprintf("%s (amendment of %s)", msg, plumbing.Hash().String()), git.CommitOptions{Amend: true})
+}
+
+func (storageSession *storageSession) commitWithOptions(msg string, opts git.CommitOptions) error {
 	user, err := user.Current()
 	if err != nil {
 		return err
@@ -370,20 +381,17 @@ func (storageSession *storageSession) commit(msg string) error {
 		return err
 	}
 
+	opts.Author = &object.Signature{
+		Name:  userName,
+		Email: user.Username + "@" + host,
+		When:  time.Now(),
+	}
+
 	tree, err := storageSession.repository.Worktree()
 	if err != nil {
 		return err
 	}
-
-	commitOptions := git.CommitOptions{
-		Author: &object.Signature{
-			Name:  userName,
-			Email: user.Username + "@" + host,
-			When:  time.Now(),
-		},
-	}
-
-	if _, err := tree.Commit(msg, &commitOptions); err != nil {
+	if _, err := tree.Commit(msg, &opts); err != nil {
 		return err
 	}
 
@@ -393,20 +401,21 @@ func (storageSession *storageSession) commit(msg string) error {
 // push current working tree state to the remote repository
 // It assumes the upstream has been set for the current branch - it will not do anything to define the ref.
 func (storageSession *storageSession) push() error {
+	return storageSession.pushWithOptions(git.PushOptions{})
+}
+
+func (storageSession *storageSession) pushForce() error {
+	return storageSession.pushWithOptions(git.PushOptions{Force: true})
+}
+
+func (storageSession *storageSession) pushWithOptions(opts git.PushOptions) error {
 	remote, err := storageSession.getRemote()
 	if err != nil {
 		return err
 	}
 
-	pushOptions := git.PushOptions{
-		Auth: storageSession.auth,
-	}
-
-	if err := remote.Push(&pushOptions); err != nil {
-		return err
-	}
-
-	return nil
+	opts.Auth = storageSession.auth
+	return remote.Push(&opts)
 }
 
 // fileExists returns true if file existed in the working tree

@@ -56,7 +56,7 @@ Don't forget to add it to your `PATH`.
 
 #### As Docker Image
 
-See https://github.com/plumber-cd/terraform-backend-git/pkgs/container/terraform-backend-git.
+See <https://github.com/plumber-cd/terraform-backend-git/pkgs/container/terraform-backend-git>.
 
 ```bash
 docker pull ghcr.io/plumber-cd/terraform-backend-git:latest
@@ -64,7 +64,7 @@ docker pull ghcr.io/plumber-cd/terraform-backend-git:latest
 
 #### As Github Action
 
-See https://github.com/marketplace/actions/setup-terraform-backend-git.
+See <https://github.com/marketplace/actions/setup-terraform-backend-git>.
 
 ```yaml
 steps:
@@ -189,6 +189,7 @@ CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend confi
 `--repository` | `git.repository` | `TF_BACKEND_GIT_GIT_REPOSITORY` |`repository` | Required; Which repository to use for storing TF state?
 `--ref` | `git.ref` | `TF_BACKEND_GIT_GIT_REF` |`ref` | Optional; Which branch to use in that `repository`? Default: `master`.
 `--state` | `git.state` | `TF_BACKEND_GIT_GIT_STATE` | `state` | Required; Path to the state file in that `repository`.
+`--amend` | `git.amend` | `TF_BACKEND_GIT_GIT_AMEND` | `amend` | Optional; whether to use git amend + force push to update state file.
 `--config` | - | - | - | Optional; Path to the `hcl` config file.
 `--address` | `address` | `TF_BACKEND_GIT_ADDRESS` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
 `--access-logs` | `accessLogs` | `TF_BACKEND_GIT_ACCESSLOGS` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
@@ -283,9 +284,9 @@ Note that if either username or password changes - Terraform will consider this 
 
 ### Why not native Terraform Backend
 
-Unfortunately, Terraform Backends is not pluggable like Providers are, see https://github.com/hashicorp/terraform/issues/5877.
+Unfortunately, Terraform Backends is not pluggable like Providers are, see <https://github.com/hashicorp/terraform/issues/5877>.
 
-Due to this, I couldn't make a proper native Terraform backend implementation for Git, it should have been implemented and added to https://github.com/hashicorp/terraform code base. There is an open ticket to do it https://github.com/hashicorp/terraform/issues/24603, but it is unclear when this would happen ([if it will at all](https://github.com/hashicorp/terraform/issues/24603#issuecomment-613533258)). That said I figured this HTTP backend implementation might be useful for the time being.
+Due to this, I couldn't make a proper native Terraform backend implementation for Git, it should have been implemented and added to <https://github.com/hashicorp/terraform> code base. There is an open ticket to do it <https://github.com/hashicorp/terraform/issues/24603>, but it is unclear when this would happen ([if it will at all](https://github.com/hashicorp/terraform/issues/24603#issuecomment-613533258)). That said I figured this HTTP backend implementation might be useful for the time being.
 
 ## Why storing state in Git
 

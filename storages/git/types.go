@@ -13,11 +13,12 @@ import (
 // RequestMetadataParams is Git storage specific parameters
 type RequestMetadataParams struct {
 	Repository, Ref, State string
+	Amend                  bool
 }
 
 // String is a human readable representation for this params set
 func (params *RequestMetadataParams) String() string {
-	return fmt.Sprintf("%s?ref=%s//%s", params.Repository, params.Ref, params.State)
+	return fmt.Sprintf("%s?ref=%s&amend=%t//%s", params.Repository, params.Ref, params.Amend, params.State)
 }
 
 // StorageClient implementation for Git storage type
