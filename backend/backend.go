@@ -87,9 +87,10 @@ func UnLockState(metadata *types.RequestMetadata, storageClient types.StorageCli
 	if !force {
 		var lock types.LockInfo
 		if err := json.Unmarshal(body, &lock); err != nil {
-			if err == io.EOF {
+			var syntaxError *json.SyntaxError
+			if err == io.EOF || errors.As(err, &syntaxError) {
 				log.Println(`WARNING: force-unlock is currently broken.
-	Reason: https://github.com/hashicorp/terraform/blob/master/backend/remote-state/http/client.go is broken.
+	See issue https://github.com/hashicorp/terraform/issues/28421.
 	Unlock function in HTTP TF backend does not using lockID.
 	Our backend would never know the ID to unlock when force-unlock was used.
 	` + storageClient.ForceUnLockWorkaroundMessage(metadata.Params))
