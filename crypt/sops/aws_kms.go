@@ -1,9 +1,9 @@
 package sops
 
 import (
-	"os"
 	"strings"
 
+	"github.com/spf13/viper"
 	sops "go.mozilla.org/sops/v3"
 	"go.mozilla.org/sops/v3/kms"
 )
@@ -15,14 +15,13 @@ func init() {
 type AwsKmsConfig struct{}
 
 func (c *AwsKmsConfig) IsActivated() bool {
-	_, ok := os.LookupEnv("TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS")
-	return ok
+	return viper.InConfig("encryption.sops.aws.key_arns")
 }
 
 func (c *AwsKmsConfig) KeyGroup() (sops.KeyGroup, error) {
-	profile := os.Getenv("TF_BACKEND_HTTP_SOPS_AWS_PROFILE")
-	arns := os.Getenv("TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS")
-	contextStr := os.Getenv("TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT")
+	profile := viper.GetString("encryption.sops.aws.profile")
+	arns := viper.GetString("encryption.sops.aws.key_arns")
+	contextStr := viper.GetString("encryption.sops.aws.kms_context")
 	contextStr = strings.TrimSpace(contextStr)
 
 	context := make(map[string]*string)
@@ -41,4 +40,10 @@ func (c *AwsKmsConfig) KeyGroup() (sops.KeyGroup, error) {
 	}
 
 	return keyGroup, nil
+}
+
+func init() {
+	viper.BindEnv("encryption.sops.aws.key_arns", "TF_BACKEND_HTTP_SOPS_AWS_KMS_ARNS")
+	viper.BindEnv("encryption.sops.aws.profile", "TF_BACKEND_HTTP_SOPS_AWS_PROFILE")
+	viper.BindEnv("encryption.sops.aws.kms_context", "TF_BACKEND_HTTP_SOPS_AWS_KMS_CONTEXT")
 }

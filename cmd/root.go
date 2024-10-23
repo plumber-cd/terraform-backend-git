@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
@@ -16,7 +17,7 @@ import (
 	"github.com/plumber-cd/terraform-backend-git/server"
 )
 
-var cfgFile string
+var cfgFiles []string
 
 // rootCmd main command that just starts the server and keeps listening on port until terminated
 var rootCmd = &cobra.Command{
@@ -60,7 +61,7 @@ func init() {
 
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is terraform-backend-git.hcl)")
+	rootCmd.PersistentFlags().StringArrayVarP(&cfgFiles, "config", "c", []string{}, "config file, can be multiple. (default is [terraform-backend-git.hcl, terraform-backend-git.secret.hcl])")
 
 	rootCmd.PersistentFlags().StringP("address", "a", "127.0.0.1:6061", "Specify the listen address")
 	viper.BindPFlag("address", rootCmd.PersistentFlags().Lookup("address"))
@@ -74,22 +75,27 @@ func init() {
 
 func initConfig() {
 	viper.SetConfigType("hcl")
-	viper.SetConfigName("terraform-backend-git")
 
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	if len(cfgFiles) > 0 {
+		for i := 0; i < len(cfgFiles); i++ {
+			addViperConfigPath(cfgFiles[i])
+		}
 	} else {
 		home, err := homedir.Dir()
 		if err != nil {
 			log.Fatal(err)
 		}
-		viper.AddConfigPath(home)
+
+		addViperConfigPath(filepath.Join(home, "terraform-backend-git.hcl"))
+		addViperConfigPath(filepath.Join(home, "terraform-backend-git.secret.hcl"))
 
 		cwd, err := os.Getwd()
 		if err != nil {
 			log.Fatal(err)
 		}
-		viper.AddConfigPath(cwd)
+
+		addViperConfigPath(filepath.Join(cwd, "terraform-backend-git.hcl"))
+		addViperConfigPath(filepath.Join(cwd, "terraform-backend-git.secret.hcl"))
 	}
 
 	viper.AutomaticEnv()
@@ -99,4 +105,24 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		log.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func addViperConfigPath(path string) error {
+	_, err := os.Stat(path)
+	if err != nil {
+
+		return err
+	}
+
+	// fmt.Println("Adding config", path)
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	viper.MergeConfig(f)
+
+	return nil
 }
