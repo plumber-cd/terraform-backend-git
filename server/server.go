@@ -35,9 +35,9 @@ func Start() {
 	address := viper.GetString("address")
 	log.Println("listen on", address)
 
-	httpCert, okHttpCert := os.LookupEnv("TF_BACKEND_GIT_HTTPS_CERT")
-	httpKey, okHttpKey := os.LookupEnv("TF_BACKEND_GIT_HTTPS_KEY")
-	if okHttpCert && okHttpKey {
+	httpCert := viper.GetString("server.https_cert")
+	httpKey := viper.GetString("server.https_key")
+	if httpCert != "" && httpKey != "" {
 		log.Fatal(http.ListenAndServeTLS(address, httpCert, httpKey, mux))
 	} else {
 		log.Fatal(http.ListenAndServe(address, mux))
@@ -46,9 +46,9 @@ func Start() {
 
 // basicAuth checking for user authentication
 func basicAuth(next http.Handler) http.Handler {
-	backendUsername, okBackendUsername := os.LookupEnv("TF_BACKEND_GIT_HTTP_USERNAME")
-	backendPassword, okBackendPassword := os.LookupEnv("TF_BACKEND_GIT_HTTP_PASSWORD")
-	if !okBackendUsername || !okBackendPassword {
+	backendUsername := viper.GetString("server.http_username")
+	backendPassword := viper.GetString("server.http_password")
+	if backendUsername == "" || backendPassword == "" {
 		log.Println("WARNING: HTTP basic auth is disabled, please specify TF_BACKEND_GIT_HTTP_USERNAME and TF_BACKEND_GIT_HTTP_PASSWORD")
 		return next
 	}
