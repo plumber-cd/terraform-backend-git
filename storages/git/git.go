@@ -185,6 +185,15 @@ func (storageSession *storageSession) clone(params *RequestMetadataParams) error
 		URL:           params.Repository,
 		Auth:          auth,
 		ReferenceName: ref(params.Ref, false),
+		// We only need to know the latest version of branches to be able to commit on top
+		// of them. And, we don't otherwise use the history of the repository. So, this
+		// saves a lot data.
+		// A further improvement that has not been implemented would be to use
+		// sparse-checkouts to only retrieve only blobs (i.e., files) from the server that
+		// we actually care about. The depth here prevents performance problems from
+		// history growth. sparse-checkouts help with horizontal growth (e.g., additional
+		// systems managed by the repository).
+		Depth:		   1,
 	}
 
 	repository, err := git.Clone(storageSession.storer, storageSession.fs, cloneOptions)
