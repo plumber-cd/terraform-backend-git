@@ -184,27 +184,28 @@ Initially it is meant to only support `git` as a storage, hence the name of it i
 
 ### Configuration
 
-CLI | `terraform-backend-git.hcl` | Environment Variable | TF HTTP backend config | Description
---- | --- | --- | --- | ---
-`--repository` | `git.repository` | `TF_BACKEND_GIT_GIT_REPOSITORY` |`repository` | Required; Which repository to use for storing TF state?
-`--ref` | `git.ref` | `TF_BACKEND_GIT_GIT_REF` |`ref` | Optional; Which branch to use in that `repository`? Default: `master`.
-`--state` | `git.state` | `TF_BACKEND_GIT_GIT_STATE` | `state` | Required; Path to the state file in that `repository`.
-`--amend` | `git.amend` | `TF_BACKEND_GIT_GIT_AMEND` | `amend` | Optional; whether to use git amend + force push to update state file.
-`--config` | - | - | - | Optional; Path to the `hcl` config file.
-`--address` | `address` | `TF_BACKEND_GIT_ADDRESS` | - | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`.
-`--access-logs` | `accessLogs` | `TF_BACKEND_GIT_ACCESSLOGS` | - | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.
+| CLI               | `terraform-backend-git.hcl` | Environment Variable               | TF HTTP backend config | Description                                                                                                                                                                                                                              |
+| ----------------- | --------------------------- | ---------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--repository`    | `git.repository`            | `TF_BACKEND_GIT_GIT_REPOSITORY`    | `repository`           | Required; Which repository to use for storing TF state?                                                                                                                                                                                  |
+| `--ref`           | `git.ref`                   | `TF_BACKEND_GIT_GIT_REF`           | `ref`                  | Optional; Which branch to use in that `repository`? Default: `master`.                                                                                                                                                                   |
+| `--state`         | `git.state`                 | `TF_BACKEND_GIT_GIT_STATE`         | `state`                | Required; Path to the state file in that `repository`.                                                                                                                                                                                   |
+| `--amend`         | `git.amend`                 | `TF_BACKEND_GIT_GIT_AMEND`         | `amend`                | Optional; Whether to use git amend + force push to update state file.                                                                                                                                                                    |
+| `--commit-prefix` | `git.commitprefix`          | `TF_BACKEND_GIT_GIT_COMMITPREFIX` | `commitprefix`         | Optional; A string to be prefixed to all commits made by the HTTP provider.                                                                                                                                                              |
+| `--config`        | -                           | -                                  | -                      | Optional; Path to the `hcl` config file.                                                                                                                                                                                                 |
+| `--address`       | `address`                   | `TF_BACKEND_GIT_ADDRESS`           | -                      | Optional; Local binding address and port to listen for HTTP requests. Only change the port, **do not change the address to `0.0.0.0` before you read [Running backend remotely](#running-backend-remotely)**. Default: `127.0.0.1:6061`. |
+| `--access-logs`   | `accessLogs`                | `TF_BACKEND_GIT_ACCESSLOGS`        | -                      | Optional; Set to `true` to enable HTTP access logs on backend. Default: `false`.                                                                                                                                                         |
 
 ### Git Credentials
 
 Both HTTP and SSH protocols are supported. As of now, any sensitive configuration is only supported via environment variables.
 
-Variable | Description
---- | ---
-`GIT_USERNAME` | Specify username for Git, only required for HTTP protocol.
-`GIT_PASSWORD`/`GITHUB_TOKEN` | Git password or token for HTTP protocol. In case of token you still have to specify `GIT_USERNAME`.
-`SSH_AUTH_SOCK` | `ssh-agent` socket.
-`SSH_PRIVATE_KEY` | Path to SSH key for Git access.
-`StrictHostKeyChecking` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
+| Variable                      | Description                                                                                                                                                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GIT_USERNAME`                | Specify username for Git, only required for HTTP protocol.                                                                                                                                                                    |
+| `GIT_PASSWORD`/`GITHUB_TOKEN` | Git password or token for HTTP protocol. In case of token you still have to specify `GIT_USERNAME`.                                                                                                                           |
+| `SSH_AUTH_SOCK`               | `ssh-agent` socket.                                                                                                                                                                                                           |
+| `SSH_PRIVATE_KEY`             | Path to SSH key for Git access.                                                                                                                                                                                               |
+| `StrictHostKeyChecking`       | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation. |
 
 Backend will determine which protocol you are using based on the `repository` URL.
 

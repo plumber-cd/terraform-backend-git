@@ -114,5 +114,9 @@ func init() {
 	gitBackendCmd.PersistentFlags().StringP("dir", "d", "", "Change current working directory")
 	viper.BindPFlag("git.dir", gitBackendCmd.PersistentFlags().Lookup("dir"))
 
+	gitBackendCmd.PersistentFlags().StringP("commit-prefix", "c", "", "String to prefix all commit messages with")
+	viper.BindPFlag("git.commitprefix", gitBackendCmd.PersistentFlags().Lookup("commitprefix"))
+	viper.SetDefault("git.commitprefix", "")
+
 	discovery.RegisterBackend(gitBackendCmd)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/plumber-cd/terraform-backend-git/types"
+	"github.com/spf13/viper"
 )
 
 // NewStorageClient creates new StorageClient
@@ -155,7 +156,8 @@ func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, loc
 		return err
 	}
 
-	if err := storageSession.commit("Lock " + params.State); err != nil {
+	commitMessage := viper.GetString("git.commitprefix") + "Lock " + params.State
+	if err := storageSession.commit(commitMessage); err != nil {
 		return err
 	}
 
@@ -264,7 +266,6 @@ func (storageClient *StorageClient) GetState(p types.RequestMetadataParams) ([]b
 // The file in repository will either be created or overwritten.
 func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, state []byte) error {
 	params := p.(*RequestMetadataParams)
-
 	storageSession := storageClient.sessions[params.Repository]
 
 	if err := storageSession.checkout(params.Ref, CheckoutModeDefault); err != nil {
@@ -283,9 +284,10 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		return err
 	}
 
+	commitMessage := viper.GetString("git.commitprefix") + "Update " + params.State
 	switch params.Amend {
 	case true:
-		if err := storageSession.commitAmend("Update " + params.State); err != nil {
+		if err := storageSession.commitAmend(commitMessage); err != nil {
 			return err
 		}
 
@@ -294,7 +296,7 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		}
 
 	default:
-		if err := storageSession.commit("Update " + params.State); err != nil {
+		if err := storageSession.commit(commitMessage); err != nil {
 			return err
 		}
 
@@ -326,7 +328,8 @@ func (storageClient *StorageClient) DeleteState(p types.RequestMetadataParams) e
 		return err
 	}
 
-	if err := storageSession.commit("Delete " + params.State); err != nil {
+	commitMessage := viper.GetString("git.commitprefix") + "Delete " + params.State
+	if err := storageSession.commit(commitMessage); err != nil {
 		return err
 	}
 
