@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/plumber-cd/terraform-backend-git/types"
+	"github.com/spf13/viper"
 )
 
 // NewStorageClient creates new StorageClient
@@ -155,8 +156,7 @@ func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, loc
 		return err
 	}
 
-	commitPrefix, _ := os.LookupEnv("TF_BACKEND_HTTP_COMMIT_PREFIX")
-	commitMessage := commitPrefix + "Lock " + params.State
+	commitMessage := viper.GetString("git.commitprefix") + "Lock " + params.State
 	if err := storageSession.commit(commitMessage); err != nil {
 		return err
 	}
@@ -284,8 +284,7 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		return err
 	}
 
-	commitPrefix, _ := os.LookupEnv("TF_BACKEND_HTTP_COMMIT_PREFIX")
-	commitMessage := commitPrefix + "Update " + params.State
+	commitMessage := viper.GetString("git.commitprefix") + "Update " + params.State
 	switch params.Amend {
 	case true:
 		if err := storageSession.commitAmend(commitMessage); err != nil {
@@ -329,8 +328,7 @@ func (storageClient *StorageClient) DeleteState(p types.RequestMetadataParams) e
 		return err
 	}
 
-	commitPrefix, _ := os.LookupEnv("TF_BACKEND_HTTP_COMMIT_PREFIX")
-	commitMessage := commitPrefix + "Delete " + params.State
+	commitMessage := viper.GetString("git.commitprefix") + "Delete " + params.State
 	if err := storageSession.commit(commitMessage); err != nil {
 		return err
 	}
