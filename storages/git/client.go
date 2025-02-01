@@ -155,7 +155,9 @@ func (storageClient *StorageClient) LockState(p types.RequestMetadataParams, loc
 		return err
 	}
 
-	if err := storageSession.commit("Lock " + params.State); err != nil {
+	commitPrefix, _ := os.LookupEnv("TF_BACKEND_HTTP_COMMIT_PREFIX")
+	commitMessage := commitPrefix + "Lock " + params.State
+	if err := storageSession.commit(commitMessage); err != nil {
 		return err
 	}
 
@@ -264,7 +266,6 @@ func (storageClient *StorageClient) GetState(p types.RequestMetadataParams) ([]b
 // The file in repository will either be created or overwritten.
 func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, state []byte) error {
 	params := p.(*RequestMetadataParams)
-
 	storageSession := storageClient.sessions[params.Repository]
 
 	if err := storageSession.checkout(params.Ref, CheckoutModeDefault); err != nil {
@@ -283,9 +284,11 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		return err
 	}
 
+	commitPrefix, _ := os.LookupEnv("TF_BACKEND_HTTP_COMMIT_PREFIX")
+	commitMessage := commitPrefix + "Update " + params.State
 	switch params.Amend {
 	case true:
-		if err := storageSession.commitAmend("Update " + params.State); err != nil {
+		if err := storageSession.commitAmend(commitMessage); err != nil {
 			return err
 		}
 
@@ -294,7 +297,7 @@ func (storageClient *StorageClient) UpdateState(p types.RequestMetadataParams, s
 		}
 
 	default:
-		if err := storageSession.commit("Update " + params.State); err != nil {
+		if err := storageSession.commit(commitMessage); err != nil {
 			return err
 		}
 
@@ -326,7 +329,9 @@ func (storageClient *StorageClient) DeleteState(p types.RequestMetadataParams) e
 		return err
 	}
 
-	if err := storageSession.commit("Delete " + params.State); err != nil {
+	commitPrefix, _ := os.LookupEnv("TF_BACKEND_HTTP_COMMIT_PREFIX")
+	commitMessage := commitPrefix + "Delete " + params.State
+	if err := storageSession.commit(commitMessage); err != nil {
 		return err
 	}
 
