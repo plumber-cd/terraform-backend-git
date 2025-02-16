@@ -26,6 +26,7 @@ Git as Terraform backend? Seriously? I know, might sound like a stupid idea at f
         - [AWS KMS](#aws-kms)
         - [GCP KMS](#gcp-kms)
         - [Hashicorp Vault](#hashicorp-vault)
+        - [Age](#age)
       - [AES256](#aes256)
     - [Running backend remotely](#running-backend-remotely)
     - [TLS](#tls)
@@ -247,6 +248,10 @@ Use `TF_BACKEND_HTTP_SOPS_GCP_KMS_KEYS` to provide a comma separated list of GCP
 ##### Hashicorp Vault
 
 Use `TF_BACKEND_HTTP_SOPS_HC_VAULT_URIS` to point it to the Vault Transit keys. It is a comma separated list of URLs in a form of `${VAULT_ADDR}/v1/transit/keys/key`, where `transit` is a name of Vault Transit mount and `key` is the name of the key in that mount. Under the hood Vault SDK is using standard credentials resolver to automatically discover Vault credentials in the environment, meaning you can either use `vault login` or set `VAULT_TOKEN` environment variable.
+
+##### Age
+
+Use `TF_BACKEND_HTTP_SOPS_AGE_RECIPIENTS` to provide a comma separated list of age public keys. Ensure that corresponding private key is located in `keys.txt` in a `sops` subdirectory of your user configuration directory. Read [Encrypting using age](https://github.com/getsops/sops#encrypting-using-age) for further details.
 
 #### AES256
 
