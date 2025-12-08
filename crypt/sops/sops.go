@@ -3,7 +3,7 @@ package sops
 import (
 	"log"
 
-	sops "go.mozilla.org/sops/v3"
+	sops "github.com/getsops/sops/v3"
 )
 
 type Config interface {

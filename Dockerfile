@@ -1,4 +1,4 @@
-FROM golang:1.23 AS build
+FROM golang:1.24 AS build
 
 ARG RELEASE_STRING=dev
 ENV IMPORT_PATH="github.com/plumber-cd/terraform-backend-git/cmd"

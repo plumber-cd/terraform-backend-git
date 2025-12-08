@@ -6,12 +6,12 @@ import (
 	"os"
 	"strconv"
 
-	sops "go.mozilla.org/sops/v3"
-	"go.mozilla.org/sops/v3/aes"
-	"go.mozilla.org/sops/v3/cmd/sops/common"
-	"go.mozilla.org/sops/v3/keyservice"
-	sopsjson "go.mozilla.org/sops/v3/stores/json"
-	"go.mozilla.org/sops/v3/version"
+	sops "github.com/getsops/sops/v3"
+	"github.com/getsops/sops/v3/aes"
+	"github.com/getsops/sops/v3/cmd/sops/common"
+	"github.com/getsops/sops/v3/keyservice"
+	sopsjson "github.com/getsops/sops/v3/stores/json"
+	"github.com/getsops/sops/v3/version"
 
 	sc "github.com/plumber-cd/terraform-backend-git/crypt/sops"
 )

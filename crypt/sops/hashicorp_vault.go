@@ -3,8 +3,8 @@ package sops
 import (
 	"os"
 
-	sops "go.mozilla.org/sops/v3"
-	"go.mozilla.org/sops/v3/hcvault"
+	sops "github.com/getsops/sops/v3"
+	"github.com/getsops/sops/v3/hcvault"
 )
 
 func init() {

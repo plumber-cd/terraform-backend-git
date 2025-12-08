@@ -3,8 +3,8 @@ package sops
 import (
 	"os"
 
-	"go.mozilla.org/sops/v3"
-	"go.mozilla.org/sops/v3/age"
+	"github.com/getsops/sops/v3"
+	"github.com/getsops/sops/v3/age"
 )
 
 func init() {
