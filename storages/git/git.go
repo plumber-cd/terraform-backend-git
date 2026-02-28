@@ -36,14 +36,41 @@ func init() {
 func authBasicHTTP() (*http.BasicAuth, error) {
 	username, okUsername := os.LookupEnv("GIT_USERNAME")
 	if !okUsername {
-		return nil, errors.New("Git protocol was http but username was not set")
+		return nil, errors.New("Git protocol was http but username was not set (GIT_USERNAME)")
 	}
 
 	password, okPassword := os.LookupEnv("GIT_PASSWORD")
 	if !okPassword {
+		if passwordFile, ok := os.LookupEnv("GIT_PASSWORD_FILE"); ok {
+			buf, err := os.ReadFile(passwordFile)
+			if err != nil {
+				return nil, err
+			}
+			password = strings.TrimSpace(string(buf))
+			if password == "" {
+				return nil, errors.New("Git protocol was http but password file was empty (GIT_PASSWORD_FILE)")
+			}
+			okPassword = true
+		}
+	}
+
+	if !okPassword {
 		ghToken, okGhToken := os.LookupEnv("GITHUB_TOKEN")
 		if !okGhToken {
-			return nil, errors.New("Git protocol was http but neither password nor token was set")
+			if ghTokenFile, ok := os.LookupEnv("GITHUB_TOKEN_FILE"); ok {
+				buf, err := os.ReadFile(ghTokenFile)
+				if err != nil {
+					return nil, err
+				}
+				ghToken = strings.TrimSpace(string(buf))
+				if ghToken == "" {
+					return nil, errors.New("Git protocol was http but token file was empty (GITHUB_TOKEN_FILE)")
+				}
+				okGhToken = true
+			}
+		}
+		if !okGhToken {
+			return nil, errors.New("Git protocol was http but neither password nor token was set (GIT_PASSWORD/GIT_PASSWORD_FILE/GITHUB_TOKEN/GITHUB_TOKEN_FILE)")
 		}
 		password = ghToken
 	}
@@ -193,7 +220,7 @@ func (storageSession *storageSession) clone(params *RequestMetadataParams) error
 		// we actually care about. The depth here prevents performance problems from
 		// history growth. sparse-checkouts help with horizontal growth (e.g., additional
 		// systems managed by the repository).
-		Depth:		   1,
+		Depth: 1,
 	}
 
 	repository, err := git.Clone(storageSession.storer, storageSession.fs, cloneOptions)

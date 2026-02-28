@@ -32,6 +32,8 @@ func Start() {
 	mux := http.NewServeMux()
 	mux.Handle("/", h)
 
+	startReloadHandler()
+
 	address := viper.GetString("address")
 	log.Println("listen on", address)
 

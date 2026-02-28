@@ -108,6 +108,38 @@ func (storageClient *StorageClient) Disconnect(p types.RequestMetadataParams) {
 	}
 }
 
+// Reload refreshes auth methods for all cached repository sessions.
+//
+// This is intended for long-lived backend processes where credentials rotate (e.g. short-lived tokens).
+// It is safe to call while requests are in-flight: it will block on each repository session mutex.
+func (storageClient *StorageClient) Reload() error {
+	type sessionEntry struct {
+		repository string
+		session    *storageSession
+	}
+
+	storageClient.sessionsMutex.Lock()
+	sessions := make([]sessionEntry, 0, len(storageClient.sessions))
+	for repo, s := range storageClient.sessions {
+		sessions = append(sessions, sessionEntry{repository: repo, session: s})
+	}
+	storageClient.sessionsMutex.Unlock()
+
+	for _, entry := range sessions {
+		entry.session.mutex.Lock()
+		newAuth, err := auth(&RequestMetadataParams{Repository: entry.repository})
+		if err == nil {
+			entry.session.auth = newAuth
+		}
+		entry.session.mutex.Unlock()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // LockState this implementation for Git storage will create and push a new branch to remote.
 // The branch name will be the name of the state file prefixed by "locks/".
 // Next to the state file in subject, there will be a ".lock" file added and commited, that will contain the lock metadata.
