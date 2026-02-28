@@ -208,7 +208,7 @@ Variable | Description
 `SSH_PRIVATE_KEY` | Path to SSH key for Git access.
 `StrictHostKeyChecking` | Optional; If set to `no`, will not require strict host key checking. Somewhat more secure way of using Git in automation is to use `ssh -T -oStrictHostKeyChecking=accept-new git@github.com` before starting any automation.
 
-When using `*_FILE` variables for HTTP auth, the file contents are read for each remote Git operation, which allows short-lived tokens to rotate without restarting the backend.
+When using `*_FILE` variables for HTTP auth, the file contents are cached in-memory and re-read when the file changes. This allows short-lived tokens to rotate without restarting the backend.
 
 Backend will determine which protocol you are using based on the `repository` URL.
 

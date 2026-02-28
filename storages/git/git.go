@@ -42,14 +42,14 @@ func authBasicHTTP() (*http.BasicAuth, error) {
 	password, okPassword := os.LookupEnv("GIT_PASSWORD")
 	if !okPassword {
 		if passwordFile, ok := os.LookupEnv("GIT_PASSWORD_FILE"); ok {
-			buf, err := os.ReadFile(passwordFile)
+			v, err := credentialFiles.readTrimmed(passwordFile)
 			if err != nil {
+				if errors.Is(err, errCredentialFileEmpty) {
+					return nil, errors.New("Git protocol was http but password file was empty (GIT_PASSWORD_FILE)")
+				}
 				return nil, err
 			}
-			password = strings.TrimSpace(string(buf))
-			if password == "" {
-				return nil, errors.New("Git protocol was http but password file was empty (GIT_PASSWORD_FILE)")
-			}
+			password = v
 			okPassword = true
 		}
 	}
@@ -58,14 +58,14 @@ func authBasicHTTP() (*http.BasicAuth, error) {
 		ghToken, okGhToken := os.LookupEnv("GITHUB_TOKEN")
 		if !okGhToken {
 			if ghTokenFile, ok := os.LookupEnv("GITHUB_TOKEN_FILE"); ok {
-				buf, err := os.ReadFile(ghTokenFile)
+				v, err := credentialFiles.readTrimmed(ghTokenFile)
 				if err != nil {
+					if errors.Is(err, errCredentialFileEmpty) {
+						return nil, errors.New("Git protocol was http but token file was empty (GITHUB_TOKEN_FILE)")
+					}
 					return nil, err
 				}
-				ghToken = strings.TrimSpace(string(buf))
-				if ghToken == "" {
-					return nil, errors.New("Git protocol was http but token file was empty (GITHUB_TOKEN_FILE)")
-				}
+				ghToken = v
 				okGhToken = true
 			}
 		}

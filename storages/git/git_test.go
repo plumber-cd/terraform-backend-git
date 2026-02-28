@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
@@ -111,6 +112,11 @@ func TestStorageSessionRemoteAuth_RefetchesTokenFile(t *testing.T) {
 
 	if err := os.WriteFile(file, []byte("tok2\n"), 0600); err != nil {
 		t.Fatalf("write file: %v", err)
+	}
+	// Some filesystems have a coarse mtime resolution; ensure the stat signature changes.
+	now := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(file, now, now); err != nil {
+		t.Fatalf("chtimes: %v", err)
 	}
 
 	auth2, err := s.remoteAuth()
