@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 func TestAuthBasicHTTP_EnvPassword(t *testing.T) {
@@ -81,5 +83,45 @@ func TestAuthBasicHTTP_MissingUsername(t *testing.T) {
 	_, err := authBasicHTTP()
 	if err == nil {
 		t.Fatalf("expected error")
+	}
+}
+
+func TestStorageSessionRemoteAuth_RefetchesTokenFile(t *testing.T) {
+	t.Setenv("GIT_USERNAME", "user")
+
+	file := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(file, []byte("tok1\n"), 0600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	t.Setenv("GITHUB_TOKEN_FILE", file)
+
+	s := &storageSession{remoteURL: "https://example.invalid/repo.git"}
+
+	auth1, err := s.remoteAuth()
+	if err != nil {
+		t.Fatalf("remoteAuth: %v", err)
+	}
+	ba1, ok := auth1.(*githttp.BasicAuth)
+	if !ok {
+		t.Fatalf("expected BasicAuth, got %T", auth1)
+	}
+	if ba1.Password != "tok1" {
+		t.Fatalf("expected password %q, got %q", "tok1", ba1.Password)
+	}
+
+	if err := os.WriteFile(file, []byte("tok2\n"), 0600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	auth2, err := s.remoteAuth()
+	if err != nil {
+		t.Fatalf("remoteAuth: %v", err)
+	}
+	ba2, ok := auth2.(*githttp.BasicAuth)
+	if !ok {
+		t.Fatalf("expected BasicAuth, got %T", auth2)
+	}
+	if ba2.Password != "tok2" {
+		t.Fatalf("expected password %q, got %q", "tok2", ba2.Password)
 	}
 }

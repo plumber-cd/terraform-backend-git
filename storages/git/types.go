@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/storage"
 )
 
@@ -32,8 +31,8 @@ type StorageClient struct {
 
 // storageSession represents a particular Git repository
 type storageSession struct {
-	// auth credentials for remote operations
-	auth transport.AuthMethod
+	// remoteURL is the git repository URL used for remote operations
+	remoteURL string
 
 	// storer used for local working tree config
 	storer storage.Storer

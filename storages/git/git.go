@@ -187,9 +187,10 @@ func ref(branch string, remote bool) plumbing.ReferenceName {
 // newStorageSession makes a fresh clone to in-memory FS and saves everything to the StorageSession
 func newStorageSession(params *RequestMetadataParams) (*storageSession, error) {
 	storageSession := &storageSession{
-		storer: memory.NewStorage(),
-		fs:     memfs.New(),
-		mutex:  sync.Mutex{},
+		remoteURL: params.Repository,
+		storer:    memory.NewStorage(),
+		fs:        memfs.New(),
+		mutex:     sync.Mutex{},
 	}
 
 	if err := storageSession.clone(params); err != nil {
@@ -205,8 +206,6 @@ func (storageSession *storageSession) clone(params *RequestMetadataParams) error
 	if err != nil {
 		return err
 	}
-
-	storageSession.auth = auth
 
 	cloneOptions := &git.CloneOptions{
 		URL:           params.Repository,
@@ -242,6 +241,14 @@ func (storageSession *storageSession) getRemote() (*git.Remote, error) {
 	}
 
 	return remote, nil
+}
+
+func (storageSession *storageSession) remoteAuth() (transport.AuthMethod, error) {
+	if storageSession.remoteURL == "" {
+		return nil, errors.New("Remote repository URL is not set")
+	}
+
+	return auth(&RequestMetadataParams{Repository: storageSession.remoteURL})
 }
 
 // CheckoutMode configures checkout behaviour
@@ -285,6 +292,11 @@ func (storageSession *storageSession) checkout(branch string, mode CheckoutMode)
 // This branch must already exist locally and upstream must be set for it to know where to pull from.
 // It will ignore git.NoErrAlreadyUpToDate.
 func (storageSession *storageSession) pull(branch string) error {
+	auth, err := storageSession.remoteAuth()
+	if err != nil {
+		return err
+	}
+
 	tree, err := storageSession.repository.Worktree()
 	if err != nil {
 		return err
@@ -293,7 +305,7 @@ func (storageSession *storageSession) pull(branch string) error {
 	pullOptions := git.PullOptions{
 		ReferenceName: ref(branch, false),
 		Force:         true,
-		Auth:          storageSession.auth,
+		Auth:          auth,
 	}
 
 	if err := tree.Pull(&pullOptions); err != nil && err != git.NoErrAlreadyUpToDate {
@@ -312,9 +324,14 @@ var (
 // Attempt to fetch from remote for specified ref specs.
 // It will ignore git.NoErrAlreadyUpToDate.
 func (storageSession *storageSession) fetch(refs []config.RefSpec) error {
+	auth, err := storageSession.remoteAuth()
+	if err != nil {
+		return err
+	}
+
 	fetchOptions := git.FetchOptions{
 		RefSpecs: refs,
-		Auth:     storageSession.auth,
+		Auth:     auth,
 	}
 
 	remote, err := storageSession.getRemote()
@@ -348,11 +365,16 @@ func (storageSession *storageSession) deleteBranch(branch string, deleteRemote b
 		return err
 	}
 
+	auth, err := storageSession.remoteAuth()
+	if err != nil {
+		return err
+	}
+
 	pushOptions := &git.PushOptions{
 		RefSpecs: []config.RefSpec{
 			config.RefSpec(":" + ref),
 		},
-		Auth: storageSession.auth,
+		Auth: auth,
 	}
 
 	if err := remote.Push(pushOptions); err != nil && err != git.NoErrAlreadyUpToDate {
@@ -450,7 +472,12 @@ func (storageSession *storageSession) pushWithOptions(opts git.PushOptions) erro
 		return err
 	}
 
-	opts.Auth = storageSession.auth
+	auth, err := storageSession.remoteAuth()
+	if err != nil {
+		return err
+	}
+
+	opts.Auth = auth
 	return remote.Push(&opts)
 }
 
