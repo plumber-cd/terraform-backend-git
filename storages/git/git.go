@@ -99,7 +99,20 @@ func authSSHAgent(params *RequestMetadataParams) (*sshGit.PublicKeysCallback, er
 }
 
 // authSSH discovers environment for SSH credentials
-func authSSH() (*sshGit.PublicKeys, error) {
+func authSSH(params *RequestMetadataParams) (*sshGit.PublicKeys, error) {
+	e, err := transport.NewEndpoint(params.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	// go-git's PublicKeys.User overrides whatever user the endpoint URL
+	// carries, so it has to be threaded through explicitly.
+	// Fall back to the conventional "git" when the URL omits one.
+	user := e.User
+	if user == "" {
+		user = "git"
+	}
+
 	pemFile, okPem := os.LookupEnv("SSH_PRIVATE_KEY")
 	if !okPem {
 		// Ok then, try to discover SSH keys in the user home
@@ -121,7 +134,7 @@ func authSSH() (*sshGit.PublicKeys, error) {
 		return nil, err
 	}
 
-	return &sshGit.PublicKeys{User: "git", Signer: signer}, nil
+	return &sshGit.PublicKeys{User: user, Signer: signer}, nil
 }
 
 // auth discovers Git authentification in the environment
@@ -161,7 +174,7 @@ func auth(params *RequestMetadataParams) (transport.AuthMethod, error) {
 	}
 
 	// Otherwise, try to find some ssh keys
-	key, err := authSSH()
+	key, err := authSSH(params)
 	if err != nil {
 		return nil, err
 	}
