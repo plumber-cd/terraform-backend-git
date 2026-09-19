@@ -95,7 +95,12 @@ func authSSHAgent(params *RequestMetadataParams) (*sshGit.PublicKeysCallback, er
 		return nil, err
 	}
 
-	return sshGit.NewSSHAgentAuth(e.User)
+	user := e.User
+	if user == "" {
+		user = "git"
+	}
+
+	return sshGit.NewSSHAgentAuth(user)
 }
 
 // authSSH discovers environment for SSH credentials
