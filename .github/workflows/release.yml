@@ -1,19 +1,150 @@
-on:
-  push:
-    tags:
-      - "v*"
-
 name: Create Release
+run-name: "Release ${{ inputs.releaseVersion }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      releaseType:
+        type: choice
+        description: What kind of release?
+        options:
+          - draft-prerelease
+          - prerelease
+          - draft
+          - release
+      releaseVersion:
+        type: string
+        description: Version, including the v prefix (for example, v0.1.12)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.releaseVersion }}
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate release version
+        id: version
+        env:
+          TAG_NAME: ${{ inputs.releaseVersion }}
+        run: |
+          if [[ ! "$TAG_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "releaseVersion must be a semantic version with a v prefix, such as v0.1.12 or v0.2.0-rc.1" >&2
+            exit 1
+          fi
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Validate existing tag and release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.releaseVersion }}
+        run: |
+          existing_tag_commit=""
+          if git show-ref --verify --quiet "refs/tags/${TAG_NAME}"; then
+            existing_tag_commit=$(git rev-list -n 1 "refs/tags/${TAG_NAME}")
+            if [[ "$existing_tag_commit" != "$GITHUB_SHA" ]]; then
+              echo "Tag ${TAG_NAME} already points to ${existing_tag_commit}, not ${GITHUB_SHA}" >&2
+              exit 1
+            fi
+          fi
+
+          response_file=$(mktemp)
+          status=$(curl --silent --show-error \
+            --output "$response_file" \
+            --write-out "%{http_code}" \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")
+
+          case "$status" in
+            200)
+              if [[ "$(jq -r '.draft or .prerelease' "$response_file")" != "true" ]]; then
+                echo "Release ${TAG_NAME} is already published" >&2
+                exit 1
+              fi
+
+              if [[ -z "$existing_tag_commit" && "$(jq -r '.target_commitish' "$response_file")" != "$GITHUB_SHA" ]]; then
+                echo "Release ${TAG_NAME} targets a different commit" >&2
+                exit 1
+              fi
+              ;;
+            404)
+              ;;
+            *)
+              echo "GitHub API returned HTTP ${status} while checking release ${TAG_NAME}" >&2
+              cat "$response_file" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Generate release notes
+        env:
+          TAG_NAME: ${{ inputs.releaseVersion }}
+        run: |
+          previous_tag=$(git describe \
+            --tags \
+            --abbrev=0 \
+            --match 'v[0-9]*' \
+            --exclude "$TAG_NAME" \
+            "$GITHUB_SHA" 2>/dev/null || true)
+
+          if [[ -n "$previous_tag" ]]; then
+            revision_range="${previous_tag}..${GITHUB_SHA}"
+            changelog_url="https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${TAG_NAME}"
+          else
+            revision_range="$GITHUB_SHA"
+            changelog_url="https://github.com/${GITHUB_REPOSITORY}/commits/${TAG_NAME}"
+          fi
+
+          {
+            echo "## What's Changed"
+            echo
+
+            if [[ -z "$(git rev-list --max-count=1 "$revision_range")" ]]; then
+              echo "- No changes since ${previous_tag}."
+            else
+              while IFS=$'\t' read -r commit subject; do
+                printf -- '- %s ([`%s`](https://github.com/%s/commit/%s))\n' \
+                  "$subject" "${commit:0:7}" "$GITHUB_REPOSITORY" "$commit"
+              done < <(git log --first-parent --reverse --format='%H%x09%s' "$revision_range")
+            fi
+
+            echo
+            echo "**Full Changelog**: ${changelog_url}"
+          } > release-notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 1
+
   build:
-    name: Build
+    name: Build ${{ matrix.os }}/${{ matrix.arch }}
+    needs: validate
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         os: [linux, darwin, windows]
         arch: [amd64, 386, arm64]
@@ -23,92 +154,188 @@ jobs:
           - os: windows
             arch: arm64
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v3
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: "1.24"
-      - name: Set RELEASE_VERSION
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
-      - name: Set RELEASE_STRING
-        run: echo "RELEASE_STRING=v${RELEASE_VERSION}" >> $GITHUB_ENV
-      - name: Checkout Code
-        uses: actions/checkout@v3
-      - name: Add Windows Exe File Extension
-        if: matrix.os == 'windows'
-        run: |
-          echo "FILE_EXTENSION=.exe" >> $GITHUB_ENV
-      - name: Build Code
+          go-version-file: go.mod
+
+      - name: Build binary
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -ldflags="-X 'github.com/plumber-cd/terraform-backend-git/cmd.Version=${{ env.RELEASE_STRING }}'" -o build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+          RELEASE_VERSION: ${{ needs.validate.outputs.tag }}
+        run: |
+          extension=""
+          if [[ "$GOOS" == "windows" ]]; then
+            extension=".exe"
+          fi
+
+          mkdir -p build
+          go build \
+            -trimpath \
+            -ldflags="-X 'github.com/plumber-cd/terraform-backend-git/cmd.Version=${RELEASE_VERSION}'" \
+            -o "build/terraform-backend-git-${GOOS}-${GOARCH}${extension}"
+
+      - name: Upload binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
-          path: build/terraform-backend-git-${{ matrix.os }}-${{ matrix.arch }}${{ env.FILE_EXTENSION }}
-  docker-image:
-    name: Build Docker Image
-    runs-on: ubuntu-latest
-    needs: build
+          name: binary-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/terraform-backend-git-*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker:
+    name: Docker Build on ${{ matrix.runner }}
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     steps:
-      - name: Set RELEASE_VERSION
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
-      - name: Set RELEASE_STRING
-        run: echo "RELEASE_STRING=v${RELEASE_VERSION}" >> $GITHUB_ENV
-      - name: Checkout Code
-        uses: actions/checkout@v3
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
           build-args: |
-            RELEASE_STRING=${{ env.RELEASE_STRING }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
+            RELEASE_STRING=${{ needs.validate.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
-  release:
-    name: Draft Release
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          path: terraform-backend-git
-          pattern: terraform-backend-git-*
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Docker Merge and Push
+    needs:
+      - validate
+      - build
+      - docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: digests-*
           merge-multiple: true
+          path: /tmp/digests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ inputs.releaseType == 'release' }}
+            type=raw,value=${{ needs.validate.outputs.tag }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.validate.outputs.tag }}
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - validate
+      - build
+      - merge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-notes
+
+      - name: Download binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: terraform-backend-git
+
       - name: Generate SHA256SUMS
-        run: |
-          cd terraform-backend-git && sha256sum * > SHA256SUMS
-      - name: List Artifacts
-        run: |
-          echo "ARTIFACTS=$(echo terraform-backend-git/*)" >> $GITHUB_ENV
-      - name: Release
-        uses: docker://antonyurchenko/git-release:v4
+        working-directory: terraform-backend-git
+        run: sha256sum * > SHA256SUMS
+
+      - name: Create release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DRAFT_RELEASE: "true"
-          PRE_RELEASE: "false"
-          CHANGELOG_FILE: "CHANGELOG.md"
-          ALLOW_EMPTY_CHANGELOG: "false"
         with:
-          args: |
-            ${{ env.ARTIFACTS }}
+          name: ${{ needs.validate.outputs.tag }}
+          tag: ${{ needs.validate.outputs.tag }}
+          commit: ${{ github.sha }}
+          bodyFile: release-notes.md
+          allowUpdates: true
+          updateOnlyUnreleased: true
+          draft: ${{ inputs.releaseType == 'draft' || inputs.releaseType == 'draft-prerelease' }}
+          prerelease: ${{ inputs.releaseType == 'prerelease' || inputs.releaseType == 'draft-prerelease' }}
+          makeLatest: ${{ inputs.releaseType == 'release' }}
+          artifacts: terraform-backend-git/*
+          artifactErrorsFailBuild: true
