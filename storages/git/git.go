@@ -158,12 +158,32 @@ func auth(params *RequestMetadataParams) (transport.AuthMethod, error) {
 	// Otherwise we assume protocol was SSH
 
 	// Most likely strict known hosts checking not needed, but not making any assumptions
-	strictHostKeyChecking := true
 	hostKeyCallbackHelper := sshGit.HostKeyCallbackHelper{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	if val, ok := os.LookupEnv("StrictHostKeyChecking"); ok && val == "no" {
-		strictHostKeyChecking = false
+	if val, ok := os.LookupEnv("StrictHostKeyChecking"); !ok || val != "no" {
+		// Keep the known_hosts callback (nil means go-git falls back to it),
+		// but only offer the host key types that known_hosts has for this host.
+		// go-git skips this detection when an auth method is used,
+		// so x/crypto offers ECDSA first and a host known only by Ed25519
+		// fails with "knownhosts: key mismatch".
+		e, err := transport.NewEndpoint(params.Repository)
+		if err != nil {
+			return nil, err
+		}
+		// The lookup needs host:port; a bare host matches nothing.
+		// ssh:// URLs without a port parse to port 0.
+		port := e.Port
+		if port == 0 {
+			port = 22
+		}
+		db, err := sshGit.NewKnownHostsDb()
+		if err != nil {
+			return nil, err
+		}
+		hostKeyCallbackHelper = sshGit.HostKeyCallbackHelper{
+			HostKeyAlgorithms: db.HostKeyAlgorithms(fmt.Sprintf("%s:%d", e.Host, port)),
+		}
 	}
 
 	// First, try ssh agent
@@ -172,9 +192,7 @@ func auth(params *RequestMetadataParams) (transport.AuthMethod, error) {
 		return nil, err
 	}
 	if agent != nil {
-		if !strictHostKeyChecking {
-			agent.HostKeyCallbackHelper = hostKeyCallbackHelper
-		}
+		agent.HostKeyCallbackHelper = hostKeyCallbackHelper
 		return agent, nil
 	}
 
@@ -184,9 +202,7 @@ func auth(params *RequestMetadataParams) (transport.AuthMethod, error) {
 		return nil, err
 	}
 
-	if !strictHostKeyChecking {
-		key.HostKeyCallbackHelper = hostKeyCallbackHelper
-	}
+	key.HostKeyCallbackHelper = hostKeyCallbackHelper
 
 	return key, nil
 }
